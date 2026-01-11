@@ -1,0 +1,594 @@
+:root {
+    --bg-dark: #121212;
+    --bg-panel: #1e1e1e;
+    --primary: #bb86fc;
+    --primary-hover: #9965f4;
+    --text-main: #e0e0e0;
+    --text-muted: #a0a0a0;
+    --border: #333;
+    --success: #03dac6;
+    --error: #cf6679;
+    --overlay-bg: rgba(30, 30, 30, 0.95);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    height: 100vh;
+    overflow: hidden; /* Desktop: App feel (sem scroll na janela) */
+}
+
+/* --- LAYOUT PRINCIPAL --- */
+.app-container {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+}
+
+/* --- SIDEBAR (Controles) --- */
+.sidebar {
+    width: 350px;
+    background-color: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto; /* Scroll interno na sidebar */
+    z-index: 20;
+    flex-shrink: 0;
+}
+
+/* Header & Status */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    font-size: 1.5rem;
+    color: var(--primary);
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: var(--error);
+    transition: all 0.3s ease;
+    border: 2px solid rgba(0,0,0,0.2);
+}
+
+.status-indicator.online {
+    background-color: var(--success);
+    box-shadow: 0 0 8px var(--success);
+}
+
+/* Form Controls */
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.control-group.row {
+    flex-direction: row;
+    gap: 15px;
+}
+
+.control-group.row > div {
+    flex: 1;
+}
+
+label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+textarea, input[type="text"], input[type="number"] {
+    background-color: #2c2c2c;
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    padding: 12px;
+    border-radius: 6px;
+    font-family: inherit;
+    resize: vertical;
+    font-size: 0.95rem;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+textarea:focus, input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background-color: #333;
+}
+
+/* Buttons */
+.primary-btn {
+    background-color: var(--primary);
+    color: #000;
+    border: none;
+    padding: 14px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.2s, transform 0.1s;
+    font-size: 1rem;
+}
+
+.primary-btn:hover {
+    background-color: var(--primary-hover);
+}
+
+.primary-btn:active {
+    transform: scale(0.98);
+}
+
+.primary-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.text-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: 0.8rem;
+    padding: 5px;
+}
+
+.text-btn:hover {
+    color: var(--text-main);
+}
+
+.footer-note {
+    margin-top: auto;
+    display: flex;
+    justify-content: center;
+    padding-top: 10px;
+}
+
+/* --- MAIN CONTENT --- */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    background-color: #0a0a0a;
+}
+
+/* Live View (Área da Imagem) */
+.live-view {
+    flex: 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    padding: 20px;
+    background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+.live-view img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    transition: opacity 0.3s;
+}
+
+.placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--text-muted);
+    opacity: 0.5;
+    text-align: center;
+}
+
+.placeholder .material-icons {
+    font-size: 4rem;
+    margin-bottom: 10px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Image Actions (Botões flutuantes na imagem) */
+.image-actions {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 50;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px;
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.action-btn {
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: bold;
+    transition: background 0.2s;
+    font-size: 0.9rem;
+}
+
+.action-btn.delete {
+    background-color: rgba(207, 102, 121, 0.2);
+    color: #cf6679;
+}
+.action-btn.delete:hover {
+    background-color: #cf6679;
+    color: white;
+}
+
+.action-btn.close {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+.action-btn.close:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Progress Overlay */
+.progress-overlay {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--overlay-bg);
+    padding: 15px 25px;
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    width: auto;
+    min-width: 300px;
+    max-width: 90%;
+    z-index: 100;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.progress-bar-container {
+    flex: 1;
+    height: 6px;
+    background: #444;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--success));
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- GALLERY --- */
+.gallery-section {
+    flex: 1;
+    background-color: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: auto;
+    min-height: 200px;
+}
+
+.gallery-section h2 {
+    font-size: 1rem;
+    margin-bottom: 15px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+}
+
+.gallery-item {
+    aspect-ratio: 1;
+    background-color: #000;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s;
+    position: relative;
+    border: 2px solid transparent;
+}
+
+.gallery-item:hover {
+    transform: scale(1.05);
+    border-color: var(--primary);
+    z-index: 5;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* --- MODAL --- */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--bg-panel);
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+.modal-content h2 {
+    margin-bottom: 10px;
+    color: var(--primary);
+}
+
+.modal-content p {
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+}
+
+.modal-content input {
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+/* ========================================= */
+/* RESPONSIVIDADE MOBILE         */
+/* ========================================= */
+
+@media (max-width: 768px) {
+    /* 1. Habilitar scroll na página inteira */
+    body {
+        height: auto;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    /* 2. Layout em Coluna (Pilha) */
+    .app-container {
+        flex-direction: column;
+        height: auto;
+        overflow: visible;
+    }
+
+    /* 3. Sidebar (Inputs) no topo */
+    .sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+        padding-bottom: 25px; /* Espaço extra */
+    }
+
+    /* Ajuste de inputs para toque */
+    textarea, input[type="text"], input[type="number"] {
+        font-size: 16px; /* Evita zoom automático no iOS */
+        padding: 14px;
+    }
+
+    /* 4. Main Content (Imagem + Galeria) abaixo */
+    .main-content {
+        flex: none;
+        width: 100%;
+        height: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* 5. Visualização da Imagem */
+    .live-view {
+        /* Altura mínima para não "sumir" se não tiver imagem */
+        min-height: 50vh; 
+        padding: 10px;
+        background-color: #050505; /* Fundo levemente mais escuro */
+    }
+
+    .live-view img {
+        /* Limita altura para caber na tela do celular sem scroll excessivo */
+        max-height: 60vh; 
+        width: auto;
+        max-width: 100%;
+    }
+
+    /* Ajuste dos botões de ação da imagem */
+    .image-actions {
+        top: 10px;
+        right: 10px;
+        padding: 5px;
+    }
+    
+    .action-btn {
+        padding: 10px; /* Área de toque maior */
+    }
+    
+    .action-btn span {
+        font-size: 1.2rem;
+    }
+
+    /* 6. Barra de Progresso FIXA na tela */
+    /* Isso garante que o usuário veja o progresso mesmo se rolar para a galeria */
+    .progress-overlay {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        z-index: 1000;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.7);
+    }
+
+    /* 7. Galeria */
+    .gallery-section {
+        min-height: auto; /* Deixa crescer conforme o conteúdo */
+        padding-bottom: 40px; /* Espaço para não colar no fim da tela */
+    }
+    
+    .gallery-grid {
+        grid-template-columns: repeat(3, 1fr); /* 3 colunas no celular fica bom */
+    }
+}
+
+.queue-container {
+    margin-top: 20px;
+    border-top: 1px solid var(--border);
+    padding-top: 15px;
+    flex: 1; /* Ocupa espaço disponível na sidebar */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.queue-list {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    padding-right: 5px;
+    /* Custom Scrollbar para ficar bonito */
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) transparent;
+}
+
+.queue-item {
+    background-color: #252525;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 0.85rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s;
+}
+
+.queue-item.active {
+    border-color: var(--primary);
+    background-color: #2a2a2a;
+}
+
+.queue-item.completed {
+    border-color: var(--success);
+    opacity: 0.7;
+}
+
+.queue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.queue-id {
+    font-weight: bold;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.queue-status {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #333;
+    color: #aaa;
+    text-transform: uppercase;
+}
+
+.queue-item.active .queue-status {
+    background: rgba(187, 134, 252, 0.2);
+    color: var(--primary);
+}
+
+.queue-mini-bar-bg {
+    width: 100%;
+    height: 4px;
+    background: #444;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 5px;
+}
+
+.queue-mini-bar-fill {
+    height: 100%;
+    background: var(--success);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+/* Ajuste Mobile para a fila não sumir */
+@media (max-width: 768px) {
+    .queue-container {
+        max-height: 200px; /* Limita altura no mobile */
+    }
+}
