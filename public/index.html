@@ -6,11 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ComfyUI Node Station</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Ícones Material Design -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- SweetAlert2 para alertas bonitos -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body>
     <div class="app-container">
+        <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="header">
                 <h1>NodeStation</h1>
@@ -27,24 +31,25 @@
                     <textarea id="negativePrompt" rows="3">bad quality, worst quality, worst detail, bad anatomy, (bad hands:1.3), multiple views</textarea>
                 </div>
                 <div class="control-group row">
-                    <div>
+                    <div class="input-wrapper">
                         <label>Largura</label>
                         <input type="number" id="widthInput" value="1024" step="64">
                     </div>
-                    <div>
+                    <div class="input-wrapper">
                         <label>Altura</label>
                         <input type="number" id="heightInput" value="1384" step="64">
                     </div>
                 </div>
                 
                 <button id="generateBtn" class="primary-btn">
-                    <span class="material-icons">auto_awesome</span> Adicionar à Fila
+                    <span class="material-icons">auto_awesome</span> Gerar Imagem
                 </button>
 
                 <div class="queue-container">
                     <label>Fila de Processamento</label>
                     <div id="queueList" class="queue-list">
-                        </div>
+                        <!-- Itens da fila renderizados via JS -->
+                    </div>
                 </div>
             </div>
 
@@ -53,7 +58,9 @@
             </div>
         </aside>
 
+        <!-- CONTEÚDO PRINCIPAL -->
         <main class="main-content">
+            <!-- Área de Visualização (Live View) -->
             <div class="live-view">
                 <div id="placeholder" class="placeholder">
                     <span class="material-icons">image</span>
@@ -62,7 +69,11 @@
                 
                 <img id="resultImage" class="hidden" alt="Resultado">
 
+                <!-- Botões flutuantes sobre a imagem -->
                 <div id="imageActions" class="image-actions hidden">
+                    <button id="infoImgBtn" class="action-btn info" title="Ver Metadados (Prompt/Seed)">
+                        <span class="material-icons">info</span>
+                    </button>
                     <button id="deleteImgBtn" class="action-btn delete" title="Excluir">
                         <span class="material-icons">delete</span>
                     </button>
@@ -71,6 +82,7 @@
                     </button>
                 </div>
 
+                <!-- Overlay de Progresso -->
                 <div id="progressOverlay" class="progress-overlay hidden">
                     <div class="spinner"></div>
                     <div class="progress-bar-container">
@@ -80,13 +92,25 @@
                 </div>
             </div>
 
+            <!-- Galeria -->
             <div class="gallery-section">
-                <h2>Galeria Global</h2>
+                <div class="gallery-header">
+                    <h2>Galeria Global</h2>
+                    <div class="gallery-tools">
+                        <button id="toggleSelectModeBtn" class="text-btn">
+                            <span class="material-icons" style="font-size: 1.1rem; vertical-align: middle;">check_box</span> 
+                            Selecionar
+                        </button>
+                        <button id="deleteBatchBtn" class="text-btn delete-batch hidden">
+                            <span class="material-icons" style="font-size: 1.1rem; vertical-align: middle;">delete</span> 
+                            Excluir Selecionados (<span id="selectedCount">0</span>)
+                        </button>
+                    </div>
+                </div>
                 <div id="galleryGrid" class="gallery-grid"></div>
             </div>
         </main>
     </div>
     <script src="script.js"></script>
 </body>
-
 </html>

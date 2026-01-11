@@ -9,6 +9,7 @@
     --success: #03dac6;
     --error: #cf6679;
     --overlay-bg: rgba(30, 30, 30, 0.95);
+    --selected-border: #03dac6;
 }
 
 * {
@@ -22,7 +23,7 @@ body {
     background-color: var(--bg-dark);
     color: var(--text-main);
     height: 100vh;
-    overflow: hidden; /* Desktop: App feel (sem scroll na janela) */
+    overflow: hidden; 
 }
 
 /* --- LAYOUT PRINCIPAL --- */
@@ -41,7 +42,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    overflow-y: auto; /* Scroll interno na sidebar */
+    overflow-y: auto; 
     z-index: 20;
     flex-shrink: 0;
 }
@@ -79,7 +80,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-bottom: 15px;
+    margin-bottom: 5px;
+    width: 100%; /* Garante que o grupo ocupe a largura */
 }
 
 .control-group.row {
@@ -87,8 +89,13 @@ body {
     gap: 15px;
 }
 
-.control-group.row > div {
+/* Wrapper para inputs em linha para garantir largura correta */
+.input-wrapper {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0; /* Impede overflow em flex containers */
 }
 
 label {
@@ -99,6 +106,7 @@ label {
     letter-spacing: 0.5px;
 }
 
+/* Correção dos Inputs: width: 100% para não vazar */
 textarea, input[type="text"], input[type="number"] {
     background-color: #2c2c2c;
     border: 1px solid var(--border);
@@ -109,6 +117,8 @@ textarea, input[type="text"], input[type="number"] {
     resize: vertical;
     font-size: 0.95rem;
     transition: border-color 0.2s, background-color 0.2s;
+    width: 100%; 
+    display: block;
 }
 
 textarea:focus, input:focus {
@@ -132,6 +142,7 @@ textarea:focus, input:focus {
     gap: 8px;
     transition: background 0.2s, transform 0.1s;
     font-size: 1rem;
+    width: 100%; /* Botão largura total */
 }
 
 .primary-btn:hover {
@@ -153,13 +164,26 @@ textarea:focus, input:focus {
     border: none;
     color: var(--text-muted);
     cursor: pointer;
-    text-decoration: underline;
-    font-size: 0.8rem;
-    padding: 5px;
+    text-decoration: none;
+    font-size: 0.85rem;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: color 0.2s, background-color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .text-btn:hover {
     color: var(--text-main);
+    background-color: rgba(255,255,255,0.05);
+}
+
+.text-btn.delete-batch {
+    color: var(--error);
+}
+.text-btn.delete-batch:hover {
+    background-color: rgba(207, 102, 121, 0.1);
 }
 
 .footer-note {
@@ -246,10 +270,14 @@ textarea:focus, input:focus {
     font-weight: bold;
     transition: background 0.2s;
     font-size: 0.9rem;
+    background: transparent;
+}
+
+.action-btn:hover {
+    background-color: rgba(255,255,255,0.2);
 }
 
 .action-btn.delete {
-    background-color: rgba(207, 102, 121, 0.2);
     color: #cf6679;
 }
 .action-btn.delete:hover {
@@ -257,11 +285,12 @@ textarea:focus, input:focus {
     color: white;
 }
 
-.action-btn.close {
-    background-color: rgba(255, 255, 255, 0.1);
+.action-btn.info {
+    color: #03dac6;
 }
-.action-btn.close:hover {
-    background-color: rgba(255, 255, 255, 0.3);
+.action-btn.info:hover {
+    background-color: #03dac6;
+    color: black;
 }
 
 /* Progress Overlay */
@@ -322,12 +351,23 @@ textarea:focus, input:focus {
     min-height: 200px;
 }
 
-.gallery-section h2 {
-    font-size: 1rem;
-    margin-bottom: 15px;
-    color: var(--text-muted);
+.gallery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     border-bottom: 1px solid var(--border);
     padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.gallery-header h2 {
+    font-size: 1rem;
+    color: var(--text-muted);
+}
+
+.gallery-tools {
+    display: flex;
+    gap: 10px;
 }
 
 .gallery-grid {
@@ -358,153 +398,34 @@ textarea:focus, input:focus {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    pointer-events: none; /* Evita arrastar a imagem */
 }
 
-/* --- MODAL --- */
-.modal {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85);
-    z-index: 2000;
-    justify-content: center;
-    align-items: center;
-    backdrop-filter: blur(5px);
+/* Modos de Seleção */
+.gallery-item.selected {
+    border-color: var(--selected-border);
+    transform: scale(0.95);
+    opacity: 0.8;
 }
 
-.modal.active {
-    display: flex;
+.gallery-item.selected::after {
+    content: 'check_circle';
+    font-family: 'Material Icons';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    color: var(--selected-border);
+    font-size: 1.5rem;
+    background: rgba(0,0,0,0.5);
+    border-radius: 50%;
 }
 
-.modal-content {
-    background: var(--bg-panel);
-    padding: 30px;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 400px;
-    text-align: center;
-    border: 1px solid var(--border);
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-}
-
-.modal-content h2 {
-    margin-bottom: 10px;
-    color: var(--primary);
-}
-
-.modal-content p {
-    color: var(--text-muted);
-    margin-bottom: 20px;
-    font-size: 0.9rem;
-}
-
-.modal-content input {
-    width: 100%;
-    margin-bottom: 20px;
-}
-
-/* ========================================= */
-/* RESPONSIVIDADE MOBILE         */
-/* ========================================= */
-
-@media (max-width: 768px) {
-    /* 1. Habilitar scroll na página inteira */
-    body {
-        height: auto;
-        overflow-y: auto;
-        overflow-x: hidden;
-    }
-
-    /* 2. Layout em Coluna (Pilha) */
-    .app-container {
-        flex-direction: column;
-        height: auto;
-        overflow: visible;
-    }
-
-    /* 3. Sidebar (Inputs) no topo */
-    .sidebar {
-        width: 100%;
-        height: auto;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-        position: relative;
-        padding-bottom: 25px; /* Espaço extra */
-    }
-
-    /* Ajuste de inputs para toque */
-    textarea, input[type="text"], input[type="number"] {
-        font-size: 16px; /* Evita zoom automático no iOS */
-        padding: 14px;
-    }
-
-    /* 4. Main Content (Imagem + Galeria) abaixo */
-    .main-content {
-        flex: none;
-        width: 100%;
-        height: auto;
-        display: flex;
-        flex-direction: column;
-    }
-
-    /* 5. Visualização da Imagem */
-    .live-view {
-        /* Altura mínima para não "sumir" se não tiver imagem */
-        min-height: 50vh; 
-        padding: 10px;
-        background-color: #050505; /* Fundo levemente mais escuro */
-    }
-
-    .live-view img {
-        /* Limita altura para caber na tela do celular sem scroll excessivo */
-        max-height: 60vh; 
-        width: auto;
-        max-width: 100%;
-    }
-
-    /* Ajuste dos botões de ação da imagem */
-    .image-actions {
-        top: 10px;
-        right: 10px;
-        padding: 5px;
-    }
-    
-    .action-btn {
-        padding: 10px; /* Área de toque maior */
-    }
-    
-    .action-btn span {
-        font-size: 1.2rem;
-    }
-
-    /* 6. Barra de Progresso FIXA na tela */
-    /* Isso garante que o usuário veja o progresso mesmo se rolar para a galeria */
-    .progress-overlay {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 90%;
-        z-index: 1000;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.7);
-    }
-
-    /* 7. Galeria */
-    .gallery-section {
-        min-height: auto; /* Deixa crescer conforme o conteúdo */
-        padding-bottom: 40px; /* Espaço para não colar no fim da tela */
-    }
-    
-    .gallery-grid {
-        grid-template-columns: repeat(3, 1fr); /* 3 colunas no celular fica bom */
-    }
-}
-
+/* --- FILA --- */
 .queue-container {
     margin-top: 20px;
     border-top: 1px solid var(--border);
     padding-top: 15px;
-    flex: 1; /* Ocupa espaço disponível na sidebar */
+    flex: 1; 
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -517,7 +438,6 @@ textarea:focus, input:focus {
     gap: 8px;
     overflow-y: auto;
     padding-right: 5px;
-    /* Custom Scrollbar para ficar bonito */
     scrollbar-width: thin;
     scrollbar-color: var(--primary) transparent;
 }
@@ -586,9 +506,92 @@ textarea:focus, input:focus {
     transition: width 0.3s ease;
 }
 
-/* Ajuste Mobile para a fila não sumir */
+/* ========================================= */
+/* RESPONSIVIDADE MOBILE         */
+/* ========================================= */
+
 @media (max-width: 768px) {
+    body {
+        height: auto;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .app-container {
+        flex-direction: column;
+        height: auto;
+        overflow: visible;
+    }
+
+    /* Sidebar no topo, largura total */
+    .sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+        padding-bottom: 25px; 
+    }
+
+    textarea, input[type="text"], input[type="number"] {
+        font-size: 16px; /* Evita zoom no iOS */
+        padding: 14px;
+    }
+
+    .main-content {
+        flex: none;
+        width: 100%;
+        height: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .live-view {
+        min-height: 50vh; 
+        padding: 10px;
+        background-color: #050505;
+    }
+
+    .live-view img {
+        max-height: 60vh; 
+        width: auto;
+        max-width: 100%;
+    }
+
+    .image-actions {
+        top: 10px;
+        right: 10px;
+        padding: 5px;
+    }
+    
+    .action-btn {
+        padding: 10px;
+    }
+    
+    .action-btn span {
+        font-size: 1.2rem;
+    }
+
+    .progress-overlay {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        z-index: 1000;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.7);
+    }
+
+    .gallery-section {
+        min-height: auto; 
+        padding-bottom: 40px; 
+    }
+    
+    .gallery-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
     .queue-container {
-        max-height: 200px; /* Limita altura no mobile */
+        max-height: 200px;
     }
 }
