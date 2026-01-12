@@ -9,9 +9,13 @@ const WebSocket = require('ws');
 const app = express();
 const PORT = 3000;
 
-// CONFIGURAÇÃO DO COMFYUI
-const COMFY_API_URL = "http://127.0.0.1:8188"; 
-const COMFY_WS_URL = "ws://127.0.0.1:8188/ws";
+// CONFIGURAÇÃO DO COMFYUI (Dinâmica)
+// Default Zrok address, pode ser alterado via API
+let COMFY_API_URL = "https://5uruggdvp6an.share.zrok.io"; 
+let COMFY_WS_URL = "wss://5uruggdvp6an.share.zrok.io/ws";
+
+// CONFIGURAÇÃO AXIOS PARA ZROK
+axios.defaults.headers.common['skip_zrok_interstitial'] = '1';
 
 app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
@@ -24,74 +28,85 @@ if (!fs.existsSync(GALLERY_DIR)) fs.mkdirSync(GALLERY_DIR);
 // Memória de Jobs e Estado
 const activeJobs = new Map(); 
 let currentRunningPromptId = null; 
-let isComfyUIConnected = false; // Variável para rastrear o status do ComfyUI
+let isComfyUIConnected = false; 
+let wsConnection = null;
 
-// --- FUNÇÃO DE DOWNLOAD E SALVAMENTO ---
-async function downloadAndSaveImage(filename, subfolder, type, promptId) {
-    try {
-        const fileUrl = `${COMFY_API_URL}/view?filename=${filename}&subfolder=${subfolder}&type=${type}`;
-        const response = await axios({ url: fileUrl, method: 'GET', responseType: 'stream' });
-        
-        const baseName = `img_${Date.now()}_${promptId}`;
-        const finalFilename = `${baseName}.png`;
-        const jsonFilename = `${baseName}.json`;
+// --- FUNÇÃO AUXILIAR PARA SALVAR METADADOS E FINALIZAR ---
+function finalizeJob(promptId, filename, job) {
+    if (!job) return;
 
-        const savePath = path.join(GALLERY_DIR, finalFilename);
-        const writer = fs.createWriteStream(savePath);
-        
-        response.data.pipe(writer);
-
-        return new Promise((resolve, reject) => {
-            writer.on('finish', () => {
-                const job = activeJobs.get(promptId);
-                
-                // Salvar Metadados (JSON sidecar)
-                if (job && job.metadata) {
-                    const jsonPath = path.join(GALLERY_DIR, jsonFilename);
-                    fs.writeFileSync(jsonPath, JSON.stringify(job.metadata, null, 2));
-                }
-
-                if (job) {
-                    job.status = 'completed';
-                    job.progress = 100;
-                    job.outputUrl = `/gallery/${finalFilename}`;
-                    job.filename = finalFilename;
-                    activeJobs.set(promptId, job);
-
-                    // Auto-limpeza
-                    console.log(`[Servidor] Job ${promptId} concluído.`);
-                    setTimeout(() => {
-                        activeJobs.delete(promptId);
-                    }, 5000); // 5 segundos para garantir que o front pegue a atualização
-                }
-                resolve(finalFilename);
-            });
-            writer.on('error', reject);
-        });
-    } catch (e) {
-        console.error("Erro ao baixar imagem:", e.message);
+    // Salvar Metadados (JSON sidecar)
+    if (job.metadata) {
+        const jsonFilename = filename.replace('.png', '.json');
+        const jsonPath = path.join(GALLERY_DIR, jsonFilename);
+        fs.writeFileSync(jsonPath, JSON.stringify(job.metadata, null, 2));
     }
+
+    job.status = 'completed';
+    job.progress = 100;
+    job.outputUrl = `/gallery/${filename}`;
+    job.filename = filename;
+    activeJobs.set(promptId, job);
+
+    console.log(`[Servidor] Job ${promptId} concluído (Imagem Recebida).`);
+    
+    // Auto-limpeza da memória após 5s
+    setTimeout(() => {
+        activeJobs.delete(promptId);
+    }, 5000);
 }
 
 // --- WEBSOCKET LISTENER ---
 function connectToComfyWS() {
+    // Se já existir conexão anterior, fecha
+    if (wsConnection) {
+        try { wsConnection.terminate(); } catch(e){}
+    }
+
     const clientId = "server_node_manager";
-    const ws = new WebSocket(`${COMFY_WS_URL}?clientId=${clientId}`);
+    const wsOptions = { headers: { 'skip_zrok_interstitial': '1' } };
+
+    console.log(`[Servidor] Tentando conectar WebSocket em: ${COMFY_WS_URL}`);
+    const ws = new WebSocket(`${COMFY_WS_URL}?clientId=${clientId}`, wsOptions);
+    wsConnection = ws;
 
     ws.on('open', () => {
         console.log('[Servidor] Conectado ao ComfyUI');
-        isComfyUIConnected = true; // Atualiza status para conectado
+        isComfyUIConnected = true; 
     });
     
-    ws.on('message', async (data) => {
+    ws.on('message', async (data, isBinary) => {
+        // --- 1. TRATAMENTO DE IMAGEM BINÁRIA (SaveImageWebsocket) ---
+        if (isBinary) {
+            if (currentRunningPromptId && activeJobs.has(currentRunningPromptId)) {
+                try {
+                    // Ignora os primeiros 8 bytes (cabeçalho do protocolo ComfyUI)
+                    const imageBuffer = data.subarray(8); 
+                    
+                    const baseName = `img_${Date.now()}_${currentRunningPromptId}`;
+                    const finalFilename = `${baseName}.png`;
+                    const savePath = path.join(GALLERY_DIR, finalFilename);
+
+                    fs.writeFileSync(savePath, imageBuffer);
+
+                    const job = activeJobs.get(currentRunningPromptId);
+                    finalizeJob(currentRunningPromptId, finalFilename, job);
+                    
+                    currentRunningPromptId = null; 
+                } catch (err) {
+                    console.error("[Servidor] Erro ao salvar imagem via WebSocket:", err);
+                }
+            }
+            return;
+        }
+
+        // --- 2. TRATAMENTO DE MENSAGENS JSON ---
         try {
-            const msg = JSON.parse(data);
+            const msg = JSON.parse(data.toString());
             
-            // 1. Geração Iniciou
             if (msg.type === 'execution_start') {
                 const promptId = msg.data.prompt_id;
                 currentRunningPromptId = promptId;
-                
                 if (activeJobs.has(promptId)) {
                     const job = activeJobs.get(promptId);
                     job.status = 'processing';
@@ -100,7 +115,6 @@ function connectToComfyWS() {
                 }
             }
             
-            // 2. Progresso
             if (msg.type === 'progress') {
                 const { value, max } = msg.data;
                 if (currentRunningPromptId && activeJobs.has(currentRunningPromptId)) {
@@ -110,58 +124,34 @@ function connectToComfyWS() {
                 }
             }
 
-            // 3. Geração Finalizada
             if (msg.type === 'execution_success') {
                 const promptId = msg.data.prompt_id;
-                currentRunningPromptId = null; 
-                
                 if (activeJobs.has(promptId)) {
-                    // Busca imagem
-                    const historyRes = await axios.get(`${COMFY_API_URL}/history/${promptId}`);
-                    const outputs = historyRes.data[promptId].outputs;
-                    let imageInfo = null;
-
-                    // Tenta encontrar a imagem em diferentes nós de saída comuns
-                    if (outputs["100"]?.images?.[0]) imageInfo = outputs["100"].images[0];
-                    else if (outputs["9"]?.images?.[0]) imageInfo = outputs["9"].images[0];
-                    else if (outputs["48"]?.images?.[0]) imageInfo = outputs["48"].images[0];
-                    else {
-                        // Fallback genérico: pega o primeiro nó que tenha imagens
-                        const keys = Object.keys(outputs);
-                        for (const key of keys) {
-                            if (outputs[key].images && outputs[key].images.length > 0) {
-                                imageInfo = outputs[key].images[0];
-                                break;
-                            }
-                        }
-                    }
-
-                    if (imageInfo) {
-                        await downloadAndSaveImage(imageInfo.filename, imageInfo.subfolder, imageInfo.type, promptId);
-                    } else {
-                        // Job sem imagem
-                        const job = activeJobs.get(promptId);
-                        job.status = 'completed';
+                    const job = activeJobs.get(promptId);
+                    // Fallback se imagem não veio via binário
+                    if (job.status !== 'completed') {
+                        console.log(`[Servidor] Job ${promptId} finalizado sem imagem binária recebida (Timeout ou nó diferente).`);
+                        job.status = 'completed'; 
                         job.progress = 100;
                         activeJobs.set(promptId, job);
                         setTimeout(() => activeJobs.delete(promptId), 5000);
                     }
+                    if (currentRunningPromptId === promptId) currentRunningPromptId = null;
                 }
             }
-        } catch (e) {
-            // Ignora erros de parse irrelevantes
-        }
+        } catch (e) {}
     });
 
     ws.on('close', () => {
-        console.log('[Servidor] Desconectado do ComfyUI. Tentando reconectar...');
-        isComfyUIConnected = false; // Atualiza status para desconectado
+        isComfyUIConnected = false;
+        // Tenta reconectar apenas se a URL não tiver mudado intencionalmente para inválida
+        // Mas para simplificar, reconectamos sempre após delay
         setTimeout(connectToComfyWS, 5000);
     });
     
     ws.on('error', (err) => {
         console.error('[Servidor] Erro no WebSocket:', err.message);
-        isComfyUIConnected = false; // Atualiza status para desconectado
+        isComfyUIConnected = false;
     });
 }
 
@@ -169,7 +159,34 @@ connectToComfyWS();
 
 // --- API ROUTES ---
 
-// Nova rota para verificar status da conexão com ComfyUI
+// Config Endpoint: Ler URL atual
+app.get('/api/config', (req, res) => {
+    res.json({ url: COMFY_API_URL });
+});
+
+// Config Endpoint: Atualizar URL
+app.post('/api/config', (req, res) => {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: "URL inválida" });
+
+    // Atualiza variaveis globais
+    COMFY_API_URL = url.replace(/\/$/, ""); // Remove barra final se houver
+    
+    // Deriva WS URL (http -> ws, https -> wss)
+    if (COMFY_API_URL.startsWith("https")) {
+        COMFY_WS_URL = COMFY_API_URL.replace("https://", "wss://") + "/ws";
+    } else {
+        COMFY_WS_URL = COMFY_API_URL.replace("http://", "ws://") + "/ws";
+    }
+
+    console.log(`[Config] URLs alteradas para: API=${COMFY_API_URL}, WS=${COMFY_WS_URL}`);
+
+    // Força reconexão WebSocket
+    connectToComfyWS();
+
+    res.json({ success: true, api: COMFY_API_URL, ws: COMFY_WS_URL });
+});
+
 app.get('/api/status', (req, res) => {
     res.json({ connected: isComfyUIConnected });
 });
@@ -179,7 +196,6 @@ app.post('/api/generate', async (req, res) => {
     try {
         const { prompt, metadata } = req.body;
         
-        // Envia para o ComfyUI
         const response = await axios.post(`${COMFY_API_URL}/prompt`, {
             client_id: "server_node_manager",
             prompt: prompt
@@ -187,7 +203,6 @@ app.post('/api/generate', async (req, res) => {
 
         const promptId = response.data.prompt_id;
         
-        // Salva na memória com os metadados recebidos do front
         activeJobs.set(promptId, { 
             id: promptId, 
             status: 'pending', 
@@ -209,7 +224,7 @@ app.get('/api/queue', (req, res) => {
     res.json(queue);
 });
 
-// 3. Galeria (Lê PNGs e JSONs)
+// 3. Galeria
 app.get('/api/gallery', (req, res) => {
     fs.readdir(GALLERY_DIR, (err, files) => {
         if (err) return res.json([]);
@@ -219,8 +234,6 @@ app.get('/api/gallery', (req, res) => {
             .map(f => {
                 const filePath = path.join(GALLERY_DIR, f);
                 let meta = {};
-                
-                // Tenta ler o JSON correspondente
                 try {
                     const jsonPath = path.join(GALLERY_DIR, f.replace('.png', '.json'));
                     if (fs.existsSync(jsonPath)) {
@@ -233,7 +246,6 @@ app.get('/api/gallery', (req, res) => {
                     filename: f,
                     url: `/gallery/${f}`,
                     time: fs.statSync(filePath).mtime.getTime(),
-                    // Espalha metadados (positive, negative, seed, etc) no objeto
                     ...meta 
                 };
             })
