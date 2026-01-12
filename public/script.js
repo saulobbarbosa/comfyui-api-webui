@@ -541,7 +541,7 @@ els.generateBtn.addEventListener('click', async () => {
 
     // --- LÓGICA DE CONDICIONAL DE UPSCALE ---
     // Se o upscale for 1x, pulamos todo o bloco de upscale e refinamento
-    if (upscaleLevel === 1) {
+    if (upscaleLevel === 1.0) {
         console.log("Upscale 1x detectado: Modo rápido ativado (Ignorando upscale e segundo sampler).");
         
         // Redireciona a entrada do nó final de Decode (14) para vir direto do primeiro KSampler (2)
