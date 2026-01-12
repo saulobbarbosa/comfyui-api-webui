@@ -47,14 +47,7 @@ let selectedImages = new Set();
 
 // Tratamento de Erro Global
 window.onerror = function(message, source, lineno, colno, error) {
-    Swal.fire({
-        icon: 'error',
-        title: 'Erro Inesperado',
-        text: message,
-        footer: '<small>Verifique o console para mais detalhes.</small>',
-        background: '#1e1e1e',
-        color: '#fff'
-    });
+    console.error("Erro global:", message);
     return false;
 };
 
@@ -364,19 +357,26 @@ function renderQueue(queueData) {
             </div>
         `;
 
-        if (job.status === 'completed' && job.outputUrl) {
-            item.style.cursor = 'pointer';
-            item.title = "Clique para visualizar";
-            const meta = { 
-                url: job.outputUrl, 
-                filename: job.filename,
-                positive: job.metadata?.positive,
-                negative: job.metadata?.negative,
-                seed: job.metadata?.seed,
-                width: job.metadata?.width,
-                height: job.metadata?.height
-            };
-            item.onclick = () => displayImage(meta);
+        if (job.status === 'completed') {
+            if (job.outputUrl) {
+                item.style.cursor = 'pointer';
+                item.title = "Clique para visualizar";
+                const meta = { 
+                    url: job.outputUrl, 
+                    filename: job.filename,
+                    positive: job.metadata?.positive,
+                    negative: job.metadata?.negative,
+                    seed: job.metadata?.seed,
+                    width: job.metadata?.width,
+                    height: job.metadata?.height
+                };
+                item.onclick = () => displayImage(meta);
+            } else {
+                item.style.opacity = "0.5";
+                item.title = "Erro: Imagem não recebida";
+                item.querySelector('.queue-status').innerText = "Erro/Timeout";
+                item.querySelector('.queue-status').style.color = "#cf6679";
+            }
         }
 
         if (job.status === 'processing') {
