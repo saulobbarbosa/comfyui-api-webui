@@ -14,6 +14,22 @@ const PORT = 3000;
 let COMFY_API_URL = "https://5uruggdvp6an.share.zrok.io"; 
 let COMFY_WS_URL = "wss://5uruggdvp6an.share.zrok.io/ws";
 
+// MAPA DE TRADUÇÃO DE NÓS (Para nomes amigáveis na UI)
+const NODE_TRANSLATIONS = {
+    'CheckpointLoaderSimple': 'Carregando Modelo',
+    'CLIPTextEncode': 'Lendo Prompt',
+    'EmptyLatentImage': 'Preparando Tela',
+    'KSampler': 'Gerando (Amostragem)',
+    'VAEDecode': 'Decodificando',
+    'VAEDecodeTiled': 'Decodificando (Tiled)',
+    'SaveImageWebsocket': 'Finalizando',
+    'ImageUpscaleWithModel': 'Upscaling (IA)',
+    'ImageScaleBy': 'Redimensionando',
+    'UpscaleModelLoader': 'Carregando Upscaler',
+    'CLIPSetLastLayer': 'Configurando CLIP',
+    'VAEEncodeTiled': 'Codificando VAE'
+};
+
 // CONFIGURAÇÃO AXIOS PARA ZROK
 axios.defaults.headers.common['skip_zrok_interstitial'] = '1';
 
@@ -60,6 +76,7 @@ function finalizeJob(promptId, filename, job) {
 
     job.status = 'completed';
     job.progress = 100;
+    job.currentStep = 'Concluído'; // Atualiza status final
     job.outputUrl = `/gallery/${filename}`;
     job.filename = filename;
     job.completedAt = Date.now(); // Marca temporal para debug
@@ -180,7 +197,27 @@ function connectToComfyWS() {
                         const job = activeJobs.get(promptId);
                         job.status = 'processing';
                         job.progress = 0;
+                        job.currentStep = 'Inicializando...';
                         activeJobs.set(promptId, job);
+                    }
+                }
+
+                // --- NOVO: Captura qual nó está sendo executado ---
+                if (msg.type === 'executing') {
+                    const { node, prompt_id } = msg.data;
+                    // Se node for null, terminou a execução, execution_success cuidará disso
+                    if (node && activeJobs.has(prompt_id)) {
+                        const job = activeJobs.get(prompt_id);
+                        
+                        // Tenta descobrir o nome amigável do nó baseada no JSON do prompt salvo
+                        if (job.promptData && job.promptData[node]) {
+                            const rawType = job.promptData[node].class_type;
+                            const friendlyName = NODE_TRANSLATIONS[rawType] || rawType; // Usa tradução ou o nome técnico
+                            
+                            job.currentStep = friendlyName;
+                            activeJobs.set(prompt_id, job);
+                            console.log(`[Servidor] Job ${prompt_id} passo: ${friendlyName}`);
+                        }
                     }
                 }
                 
@@ -212,6 +249,7 @@ function connectToComfyWS() {
                                 
                                 job.status = 'completed'; 
                                 job.progress = 100;
+                                job.currentStep = 'Concluído (Sem Imagem)';
                                 job.forcedCompletionTime = Date.now(); // Marca para permitir resgate tardio se a imagem chegar logo depois
                                 activeJobs.set(promptId, job);
                                 
@@ -304,6 +342,8 @@ app.post('/api/generate', async (req, res) => {
             status: 'pending', 
             progress: 0,
             startTime: Date.now(),
+            promptData: prompt, // Salva o fluxo completo para consultar os nomes dos nós depois
+            currentStep: 'Aguardando...',
             metadata: metadata || {} 
         });
 
@@ -311,6 +351,49 @@ app.post('/api/generate', async (req, res) => {
     } catch (error) {
         console.error("Erro ao solicitar geração:", error.message);
         res.status(500).json({ error: "Erro no ComfyUI", details: error.message });
+    }
+});
+
+// Cancelar Job
+app.post('/api/cancel', async (req, res) => {
+    const { promptId } = req.body;
+    
+    console.log(`[API] Solicitando cancelamento do job: ${promptId}`);
+    
+    const job = activeJobs.get(promptId);
+    if (!job) {
+        // Se não está na memória, pode já ter acabado ou não existe.
+        return res.status(404).json({ error: "Job não encontrado ou já finalizado" });
+    }
+
+    try {
+        if (job.status === 'processing') {
+            // Se está processando, usamos /interrupt
+            console.log(`[API] Interrompendo execução (Job em andamento: ${promptId})`);
+            await axios.post(`${COMFY_API_URL}/interrupt`, {}, { 
+                headers: {'skip_zrok_interstitial': '1'} 
+            });
+        } else {
+            // Se está pendente, usamos /queue com delete
+            console.log(`[API] Removendo da fila de espera: ${promptId}`);
+            await axios.post(`${COMFY_API_URL}/queue`, { delete: [promptId] }, { 
+                headers: {'skip_zrok_interstitial': '1'} 
+            });
+        }
+
+        // Removemos da memória local imediatamente para refletir na UI
+        activeJobs.delete(promptId);
+        
+        // Se era o job atual, limpamos a referência
+        if (currentRunningPromptId === promptId) {
+            currentRunningPromptId = null;
+        }
+
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error("Erro ao cancelar job no ComfyUI:", error.message);
+        res.status(500).json({ error: "Falha ao comunicar cancelamento ao ComfyUI", details: error.message });
     }
 });
 

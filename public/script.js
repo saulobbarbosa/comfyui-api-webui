@@ -315,6 +315,54 @@ async function deleteBatchImages() {
     }
 }
 
+// --- FUNÇÃO PARA CANCELAR JOB ---
+async function cancelJob(promptId) {
+    if (!promptId) return;
+
+    const result = await Swal.fire({
+        title: 'Cancelar Job?',
+        text: "Deseja interromper a geração desta imagem?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#cf6679',
+        cancelButtonColor: '#666',
+        confirmButtonText: 'Sim, cancelar',
+        cancelButtonText: 'Não',
+        background: '#1e1e1e',
+        color: '#fff',
+        width: '300px'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            const res = await fetch(`${API_BASE}/api/cancel`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ promptId })
+            });
+            
+            if (res.ok) {
+                // Notificação sutil
+                const toast = Swal.mixin({
+                    toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff'
+                });
+                toast.fire({ icon: 'success', title: 'Job cancelado' });
+                updateQueue();
+            } else {
+                throw new Error("Erro no servidor");
+            }
+        } catch (e) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro',
+                text: 'Não foi possível cancelar o job.',
+                background: '#1e1e1e', color: '#fff'
+            });
+        }
+    }
+}
+
+
 // --- ATUALIZAÇÃO DA FILA ---
 async function updateQueue() {
     try {
@@ -344,18 +392,56 @@ function renderQueue(queueData) {
         if (job.status === 'processing') item.classList.add('active');
 
         let statusText = 'Na Fila';
-        if (job.status === 'processing') statusText = 'Gerando...';
+        
+        // --- ATUALIZAÇÃO: Usa o nome da etapa se disponível ---
+        if (job.status === 'processing') {
+            statusText = job.currentStep || 'Gerando...';
+        }
         if (job.status === 'completed') statusText = 'Pronto';
 
-        item.innerHTML = `
-            <div class="queue-header">
-                <span class="queue-id">Job #${job.id.substring(0,6)}</span>
-                <span class="queue-status">${statusText}</span>
-            </div>
-            <div class="queue-mini-bar-bg">
-                <div class="queue-mini-bar-fill" style="width: ${job.progress}%"></div>
-            </div>
-        `;
+        // Cabeçalho do item da fila
+        const header = document.createElement('div');
+        header.className = "queue-header";
+        
+        const infoSpan = document.createElement('span');
+        infoSpan.className = "queue-id";
+        infoSpan.innerText = `Job #${job.id.substring(0,6)}`;
+        header.appendChild(infoSpan);
+
+        // Grupo de Status e Cancelar
+        const statusGroup = document.createElement('div');
+        statusGroup.style.display = 'flex';
+        statusGroup.style.alignItems = 'center';
+        statusGroup.style.gap = '8px';
+
+        const statusBadge = document.createElement('span');
+        statusBadge.className = "queue-status";
+        statusBadge.innerText = statusText;
+        statusGroup.appendChild(statusBadge);
+
+        // Botão de cancelar (apenas se não estiver completo)
+        if (job.status !== 'completed') {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'queue-cancel-btn';
+            cancelBtn.innerHTML = '<span class="material-icons" style="font-size: 14px;">close</span>';
+            cancelBtn.title = "Cancelar Job";
+            cancelBtn.onclick = (e) => {
+                e.stopPropagation(); // Evita clique no item pai se houver
+                cancelJob(job.id);
+            };
+            statusGroup.appendChild(cancelBtn);
+        }
+        header.appendChild(statusGroup);
+        item.appendChild(header);
+
+        // Barra de progresso mini
+        const barBg = document.createElement('div');
+        barBg.className = "queue-mini-bar-bg";
+        const barFill = document.createElement('div');
+        barFill.className = "queue-mini-bar-fill";
+        barFill.style.width = `${job.progress}%`;
+        barBg.appendChild(barFill);
+        item.appendChild(barBg);
 
         if (job.status === 'completed') {
             if (job.outputUrl) {
@@ -374,8 +460,10 @@ function renderQueue(queueData) {
             } else {
                 item.style.opacity = "0.5";
                 item.title = "Erro: Imagem não recebida";
-                item.querySelector('.queue-status').innerText = "Erro/Timeout";
-                item.querySelector('.queue-status').style.color = "#cf6679";
+                if(statusBadge) {
+                    statusBadge.innerText = "Erro/Timeout";
+                    statusBadge.style.color = "#cf6679";
+                }
             }
         }
 

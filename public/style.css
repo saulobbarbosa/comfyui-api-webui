@@ -622,6 +622,28 @@ input:disabled {
     margin-bottom: 5px;
 }
 
+/* Botão de Cancelar Fila */
+.queue-cancel-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0; /* Impede que o botão encolha */
+}
+
+.queue-cancel-btn:hover {
+    background-color: rgba(207, 102, 121, 0.2);
+    color: var(--error);
+}
+
 .queue-id {
     font-weight: bold;
     color: var(--text-muted);
@@ -635,6 +657,13 @@ input:disabled {
     background: #333;
     color: #aaa;
     text-transform: uppercase;
+    
+    /* Ajustes para textos longos de etapa */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px; /* Limite máximo para não quebrar a linha */
+    text-align: right;
 }
 
 .queue-item.active .queue-status {
