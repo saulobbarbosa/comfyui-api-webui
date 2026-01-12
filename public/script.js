@@ -516,6 +516,7 @@ els.generateBtn.addEventListener('click', async () => {
     const positive = els.positivePrompt.value;
     const negative = els.negativePrompt.value;
 
+    // Definição Completa do Fluxo (Workflow)
     const promptFlow = {
         "1": { "inputs": { "ckpt_name": "WAI_NFSW.safetensors" }, "class_type": "CheckpointLoaderSimple" },
         "8": { "inputs": { "clip": ["1", 1], "stop_at_clip_layer": -2 }, "class_type": "CLIPSetLastLayer" },
@@ -524,17 +525,36 @@ els.generateBtn.addEventListener('click', async () => {
         "3": { "inputs": { "width": width, "height": height, "batch_size": 1 }, "class_type": "EmptyLatentImage" },
         "10": { "inputs": { "model_name": "RealESRGAN_x4plus_anime_6B.pth" }, "class_type": "UpscaleModelLoader" },
         "2": { "inputs": { "model": ["1", 0], "positive": ["9", 0], "negative": ["7", 0], "latent_image": ["3", 0], "seed": seed, "steps": 30, "cfg": 7, "sampler_name": "euler_ancestral", "scheduler": "simple", "denoise": 1 }, "class_type": "KSampler" },
+        
+        // --- BLOCO DE UPSCALE (Padrão) ---
         "4": { "inputs": { "samples": ["2", 0], "vae": ["1", 2], "tile_size": 512, "overlap": 64, "temporal_size": 64, "temporal_overlap": 8 }, "class_type": "VAEDecodeTiled" },
         "11": { "inputs": { "upscale_model": ["10", 0], "image": ["4", 0] }, "class_type": "ImageUpscaleWithModel" },
-        
-        // Nó Atualizado com o scale_by dinâmico
         "12": { "inputs": { "image": ["11", 0], "upscale_method": "nearest-exact", "scale_by": scaleBy }, "class_type": "ImageScaleBy" },
-        
         "5": { "inputs": { "pixels": ["12", 0], "vae": ["1", 2], "tile_size": 512, "overlap": 64, "temporal_size": 64, "temporal_overlap": 8 }, "class_type": "VAEEncodeTiled" },
         "13": { "inputs": { "model": ["1", 0], "positive": ["9", 0], "negative": ["7", 0], "latent_image": ["5", 0], "seed": seed, "steps": 20, "cfg": 7, "sampler_name": "euler_ancestral", "scheduler": "simple", "denoise": 0.5 }, "class_type": "KSampler" },
+        
+        // --- SAÍDA FINAL ---
+        // Originalmente recebe do 13 (segundo sampler). Se upscale=1, receberá do 2 (primeiro sampler).
         "14": { "inputs": { "samples": ["13", 0], "vae": ["1", 2], "tile_size": 512, "overlap": 64, "temporal_size": 64, "temporal_overlap": 8 }, "class_type": "VAEDecodeTiled" },
         "15": { "inputs": { "images": ["14", 0] }, "class_type": "SaveImageWebsocket" }
     };
+
+    // --- LÓGICA DE CONDICIONAL DE UPSCALE ---
+    // Se o upscale for 1x, pulamos todo o bloco de upscale e refinamento
+    if (upscaleLevel === 1) {
+        console.log("Upscale 1x detectado: Modo rápido ativado (Ignorando upscale e segundo sampler).");
+        
+        // Redireciona a entrada do nó final de Decode (14) para vir direto do primeiro KSampler (2)
+        promptFlow["14"].inputs.samples = ["2", 0];
+
+        // Removemos os nós intermediários para limpar o processamento e evitar erros de validação ou uso de memória
+        delete promptFlow["4"];  // Decode intermediário
+        delete promptFlow["10"]; // Loader do modelo de upscale
+        delete promptFlow["11"]; // Upscaler
+        delete promptFlow["12"]; // Redimensionador
+        delete promptFlow["5"];  // Encode intermediário
+        delete promptFlow["13"]; // Segundo KSampler
+    }
 
     const metadata = { positive, negative, seed, width, height, upscale: upscaleLevel };
 
