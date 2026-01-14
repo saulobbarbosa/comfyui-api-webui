@@ -63,6 +63,9 @@ window.onerror = function(message, source, lineno, colno, error) {
 function init() {
     setupEventListeners();
     
+    // Inicia com a galeria oculta por padrão
+    toggleGallery();
+
     checkConnection();
     updateGallery(); 
     updateQueue();
