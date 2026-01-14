@@ -10,6 +10,7 @@
     --error: #cf6679;
     --overlay-bg: rgba(30, 30, 30, 0.95);
     --selected-border: #03dac6;
+    --sidebar-width: 350px;
 }
 
 * {
@@ -23,7 +24,7 @@ body {
     background-color: var(--bg-dark);
     color: var(--text-main);
     height: 100vh;
-    overflow: hidden; 
+    overflow: hidden; /* Importante para o layout de app fixo */
 }
 
 /* --- LAYOUT PRINCIPAL --- */
@@ -31,11 +32,12 @@ body {
     display: flex;
     height: 100vh;
     width: 100%;
+    overflow: hidden;
 }
 
 /* --- SIDEBAR (Controles) --- */
 .sidebar {
-    width: 350px;
+    width: var(--sidebar-width);
     background-color: var(--bg-panel);
     border-right: 1px solid var(--border);
     padding: 20px;
@@ -354,11 +356,26 @@ input:disabled {
     overflow: hidden;
     position: relative;
     background-color: #0a0a0a;
+    height: 100vh; /* Garante que ocupa a altura total */
 }
 
-/* Live View (Área da Imagem) */
+/* ESTADO: GALERIA OCULTA 
+    Quando a classe .gallery-hidden é adicionada ao .main-content
+*/
+.main-content.gallery-hidden .gallery-section {
+    display: none !important;
+}
+
+.main-content.gallery-hidden .live-view {
+    flex: 1; /* Ocupa 100% do espaço restante */
+    border-bottom: none;
+}
+
+
+/* Live View (Área da Imagem) - FIXA/ESTÁTICA */
 .live-view {
-    flex: 2;
+    /* No Desktop, ocupa 60% da altura da tela, mas não rola com a página */
+    flex: 0 0 60%; 
     display: flex;
     justify-content: center;
     align-items: center;
@@ -367,6 +384,8 @@ input:disabled {
     padding: 20px;
     background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
     background-size: 20px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: flex-basis 0.3s ease, flex 0.3s ease; /* Transição suave ao ocultar galeria */
 }
 
 .live-view img {
@@ -494,14 +513,14 @@ input:disabled {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* --- GALLERY --- */
+/* --- GALLERY (Área Rolável) --- */
 .gallery-section {
-    flex: 1;
+    flex: 1; /* Ocupa o restante da tela */
     background-color: var(--bg-panel);
-    border-top: 1px solid var(--border);
-    padding: 20px;
-    overflow-y: auto;
-    min-height: 200px;
+    overflow-y: auto; /* Permite rolar apenas esta seção */
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
 }
 
 .gallery-header {
@@ -509,24 +528,71 @@ input:disabled {
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--border);
-    padding-bottom: 10px;
+    padding-bottom: 15px;
     margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.gallery-search-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+    min-width: 200px;
 }
 
 .gallery-header h2 {
     font-size: 1rem;
     color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* SEARCH BOX ESTILO */
+.search-box {
+    display: flex;
+    align-items: center;
+    background-color: #2c2c2c;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 15px;
+    flex: 1;
+    max-width: 400px;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.search-box:focus-within {
+    border-color: var(--primary);
+    background-color: #333;
+}
+
+.search-box .search-icon {
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    margin-right: 8px;
+}
+
+.search-box input {
+    background: transparent;
+    border: none;
+    padding: 5px 0;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    outline: none;
+    width: 100%;
 }
 
 .gallery-tools {
     display: flex;
     gap: 10px;
+    align-items: center;
 }
 
 .gallery-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 10px;
+    padding-bottom: 20px; /* Espaço extra no final */
 }
 
 .gallery-item {
@@ -768,17 +834,89 @@ input:disabled {
 /* RESPONSIVIDADE MOBILE         */
 /* ========================================= */
 @media (max-width: 768px) {
-    body { height: auto; overflow-y: auto; overflow-x: hidden; }
-    .app-container { flex-direction: column; height: auto; overflow: visible; }
-    .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); position: relative; padding-bottom: 25px; }
-    textarea, input[type="text"], input[type="number"] { font-size: 16px; padding: 14px; }
-    .main-content { flex: none; width: 100%; height: auto; display: flex; flex-direction: column; }
-    .live-view { min-height: 50vh; padding: 10px; background-color: #050505; }
-    .live-view img { max-height: 60vh; width: auto; max-width: 100%; }
-    .image-actions { top: 10px; right: 10px; padding: 5px; }
-    .action-btn { padding: 10px; }
-    .progress-overlay { position: fixed; bottom: 20px; width: 90%; z-index: 1000; box-shadow: 0 -4px 20px rgba(0,0,0,0.7); }
-    .gallery-section { min-height: auto; padding-bottom: 40px; }
-    .gallery-grid { grid-template-columns: repeat(3, 1fr); }
-    .queue-container { max-height: 200px; }
+    body {
+        /* No mobile, mantemos a altura fixa para evitar rolagem da página toda */
+        height: 100vh;
+        overflow: hidden;
+    }
+    
+    .app-container {
+        flex-direction: column;
+        height: 100vh; /* Altura total da tela */
+    }
+    
+    /* Sidebar agora é um menu dobrável ou apenas o topo? 
+       Para simplicidade deste design, vamos transformá-lo num header compacto ou rodapé?
+       O usuário não pediu alterações na sidebar, mas para caber tudo, vamos deixá-la rolável ou recolhida.
+       Vou deixá-la acima por enquanto, mas com tamanho reduzido se precisar, ou scroll lateral.
+       
+       Melhor abordagem para "App Like": Sidebar vira um botão de menu ou drawer. 
+       Mas para manter simples sem reescrever tudo: Sidebar no topo com scroll horizontal se necessário,
+       ou apenas stack normal.
+       
+       Vou colocar a Sidebar "escondida" ou acima da visualização. 
+       Para priorizar o Visualizador Fixo pedido:
+    */
+    
+    .sidebar {
+        width: 100%;
+        height: auto;
+        max-height: 25vh; /* Limita altura da sidebar no mobile */
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 10px;
+        flex-shrink: 0;
+    }
+
+    .main-content {
+        flex: 1;
+        height: 75vh; /* Restante da tela */
+        display: flex;
+        flex-direction: column;
+    }
+
+    .live-view {
+        /* No mobile, visualizador fixo no topo da main content */
+        flex: 0 0 40%; /* Ocupa 40% do espaço disponível na main-content */
+        min-height: 200px;
+        padding: 10px;
+        background-color: #050505;
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .live-view img {
+        max-height: 100%;
+        max-width: 100%;
+    }
+
+    .gallery-section {
+        flex: 1; /* Ocupa o resto */
+        overflow-y: auto; /* Scroll independente */
+        padding-bottom: 60px; /* Espaço para dedos */
+    }
+
+    .gallery-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .desktop-only {
+        display: none;
+    }
+    
+    .btn-label {
+        display: none; /* Esconde texto dos botões na galeria mobile para economizar espaço */
+    }
+    
+    /* Ajuste da barra de pesquisa no mobile */
+    .gallery-header {
+        flex-wrap: nowrap;
+    }
+    
+    .gallery-search-wrapper {
+        width: 100%;
+    }
+    
+    .search-box {
+        max-width: none;
+    }
 }

@@ -36,14 +36,22 @@ const els = {
     cancelSettingsAction: document.getElementById('cancelSettingsAction'),
     saveSettingsBtn: document.getElementById('saveSettingsBtn'),
     comfyUrlInput: document.getElementById('comfyUrlInput'),
-    serverAddressDisplay: document.getElementById('serverAddressDisplay')
+    serverAddressDisplay: document.getElementById('serverAddressDisplay'),
+
+    // Pesquisa
+    searchInput: document.getElementById('searchInput'),
+
+    // Toggle Galeria
+    toggleGalleryBtn: document.getElementById('toggleGalleryBtn'),
+    mainContent: document.querySelector('.main-content')
 };
 
 // Estado da Aplicação
 let lastGallerySignature = '';
 let currentImageData = null; 
 let isSelectionMode = false;
-let selectedImages = new Set(); 
+let selectedImages = new Set();
+let allGalleryImages = []; // Armazena todas as imagens para filtro local
 
 // Tratamento de Erro Global
 window.onerror = function(message, source, lineno, colno, error) {
@@ -181,21 +189,58 @@ async function updateGallery() {
         const images = await response.json();
         
         const newSignature = JSON.stringify(images.map(img => img.filename));
-        if (newSignature === lastGallerySignature) return;
+        
+        // Verifica se a lista mudou, mas também verifica se há um filtro ativo
+        // Se houver filtro ativo, precisamos re-filtrar mesmo que a assinatura seja igual (caso o usuário digite algo novo)
+        // No entanto, renderGallery chama o filtro, então só precisamos atualizar os dados
+        
+        allGalleryImages = images;
+
+        if (newSignature === lastGallerySignature) {
+            // Se os dados não mudaram, não faz nada a menos que a gente queira forçar por causa do filtro
+            // O evento 'input' do search já lida com o filtro em tempo real.
+            return; 
+        }
 
         lastGallerySignature = newSignature;
-        renderGalleryGrid(images);
+        filterAndRenderGallery(); // Usa a função de filtro
 
     } catch (e) { 
         console.error("Erro ao atualizar galeria", e); 
     }
 }
 
+// Nova função de Filtragem
+function filterAndRenderGallery() {
+    const query = els.searchInput.value.trim().toLowerCase();
+    
+    let filteredImages = allGalleryImages;
+
+    if (query) {
+        // Lógica: Separa por vírgula, substitui _ por espaço
+        // Ex: "teste, teste_teste" vira ["teste", "teste teste"]
+        const tags = query.split(',').map(tag => tag.trim().replace(/_/g, ' ')).filter(t => t);
+        
+        filteredImages = allGalleryImages.filter(img => {
+            // Procura nos metadados (principalmente prompt positivo)
+            // Se não tiver prompt salvo, tenta usar o filename ou falha
+            const haystack = (img.positive || "") + " " + (img.filename || "");
+            const haystackLower = haystack.toLowerCase();
+
+            // Verifica se TODAS as tags estão presentes (Lógica AND)
+            return tags.every(tag => haystackLower.includes(tag));
+        });
+    }
+
+    renderGalleryGrid(filteredImages);
+}
+
 function renderGalleryGrid(images) {
     els.galleryGrid.innerHTML = ''; 
     
     if (images.length === 0) {
-        els.galleryGrid.innerHTML = '<p style="color:#666; width:100%; text-align:center; padding: 20px;">Sem imagens</p>';
+        const msg = els.searchInput.value ? 'Nenhuma imagem encontrada para esta pesquisa.' : 'Sem imagens';
+        els.galleryGrid.innerHTML = `<p style="color:#666; width:100%; text-align:center; padding: 20px; grid-column: 1/-1;">${msg}</p>`;
         return;
     }
 
@@ -236,14 +281,23 @@ function toggleSelectionMode() {
     updateSelectionUI();
     
     if (isSelectionMode) {
-        els.toggleSelectModeBtn.innerHTML = '<span class="material-icons" style="font-size: 1.1rem; vertical-align: middle;">close</span> Cancelar';
+        // Atualiza ícone do botão
+        const btnIcon = els.toggleSelectModeBtn.querySelector('.material-icons');
+        const btnLabel = els.toggleSelectModeBtn.querySelector('.btn-label');
+        if(btnIcon) btnIcon.innerText = 'close';
+        if(btnLabel) btnLabel.innerText = 'Cancelar';
+        
         els.toggleSelectModeBtn.style.color = 'var(--text-main)';
     } else {
-        els.toggleSelectModeBtn.innerHTML = '<span class="material-icons" style="font-size: 1.1rem; vertical-align: middle;">check_box</span> Selecionar';
+        const btnIcon = els.toggleSelectModeBtn.querySelector('.material-icons');
+        const btnLabel = els.toggleSelectModeBtn.querySelector('.btn-label');
+        if(btnIcon) btnIcon.innerText = 'check_box';
+        if(btnLabel) btnLabel.innerText = 'Selecionar';
+        
         els.toggleSelectModeBtn.style.color = '';
         document.querySelectorAll('.gallery-item.selected').forEach(el => el.classList.remove('selected'));
-        lastGallerySignature = ""; 
-        updateGallery();
+        // Não reseta a assinatura para não piscar, apenas atualiza visualmente
+        filterAndRenderGallery();
     }
 }
 
@@ -620,6 +674,22 @@ function showImageMetadata() {
     });
 }
 
+// --- Toggle de Galeria ---
+function toggleGallery() {
+    els.mainContent.classList.toggle('gallery-hidden');
+    
+    const isHidden = els.mainContent.classList.contains('gallery-hidden');
+    const icon = els.toggleGalleryBtn.querySelector('.material-icons');
+    
+    if (isHidden) {
+        icon.innerText = 'visibility_off';
+        els.toggleGalleryBtn.title = "Mostrar Galeria";
+    } else {
+        icon.innerText = 'visibility';
+        els.toggleGalleryBtn.title = "Ocultar Galeria";
+    }
+}
+
 // --- Event Listeners ---
 function setupEventListeners() {
     els.closeImgBtn.addEventListener('click', closeImage);
@@ -627,11 +697,17 @@ function setupEventListeners() {
     els.toggleSelectModeBtn.addEventListener('click', toggleSelectionMode);
     els.deleteBatchBtn.addEventListener('click', deleteBatchImages);
     
+    // Pesquisa com debounce simples (ou direto no input se preferir tempo real instantâneo)
+    els.searchInput.addEventListener('input', filterAndRenderGallery);
+
     // Configurações
     els.settingsBtn.addEventListener('click', openSettings);
     els.closeSettingsBtn.addEventListener('click', closeSettings);
     els.cancelSettingsAction.addEventListener('click', closeSettings);
     els.saveSettingsBtn.addEventListener('click', saveConfig);
+
+    // Toggle Galeria
+    els.toggleGalleryBtn.addEventListener('click', toggleGallery);
 
     // Seed
     els.randomSeedBtn.addEventListener('change', toggleSeedInput);

@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ComfyUI Node Station</title>
     <link rel="stylesheet" href="style.css">
     <!-- Ícones Material Design -->
@@ -20,6 +20,10 @@
                 <h1>NodeStation</h1>
                 <div class="header-actions">
                     <div id="connectionStatus" class="status-indicator" title="Status da Conexão"></div>
+                    <!-- Botão Novo de Toggle Galeria -->
+                    <button id="toggleGalleryBtn" class="icon-btn" title="Ocultar Galeria">
+                        <span class="material-icons">visibility</span>
+                    </button>
                     <button id="settingsBtn" class="icon-btn" title="Configurações">
                         <span class="material-icons">settings</span>
                     </button>
@@ -91,7 +95,7 @@
 
         <!-- CONTEÚDO PRINCIPAL -->
         <main class="main-content">
-            <!-- Área de Visualização (Live View) -->
+            <!-- Área de Visualização (Live View) FIXA -->
             <div class="live-view">
                 <div id="placeholder" class="placeholder">
                     <span class="material-icons">image</span>
@@ -123,18 +127,25 @@
                 </div>
             </div>
 
-            <!-- Galeria -->
+            <!-- Galeria ROLÁVEL -->
             <div class="gallery-section">
                 <div class="gallery-header">
-                    <h2>Galeria Global</h2>
+                    <div class="gallery-search-wrapper">
+                        <h2 class="desktop-only">Galeria</h2>
+                        <div class="search-box">
+                            <span class="material-icons search-icon">search</span>
+                            <input type="text" id="searchInput" placeholder="Pesquisar tags (ex: cat, blue_sky)...">
+                        </div>
+                    </div>
+                    
                     <div class="gallery-tools">
                         <button id="toggleSelectModeBtn" class="text-btn">
                             <span class="material-icons" style="font-size: 1.1rem; vertical-align: middle;">check_box</span> 
-                            Selecionar
+                            <span class="btn-label">Selecionar</span>
                         </button>
                         <button id="deleteBatchBtn" class="text-btn delete-batch hidden">
                             <span class="material-icons" style="font-size: 1.1rem; vertical-align: middle;">delete</span> 
-                            Excluir Selecionados (<span id="selectedCount">0</span>)
+                            <span class="btn-label">Excluir (<span id="selectedCount">0</span>)</span>
                         </button>
                     </div>
                 </div>
