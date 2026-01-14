@@ -24,7 +24,7 @@ body {
     background-color: var(--bg-dark);
     color: var(--text-main);
     height: 100vh;
-    overflow: hidden; /* Importante para o layout de app fixo */
+    overflow: hidden; /* Desktop: Layout fixo tipo App */
 }
 
 /* --- LAYOUT PRINCIPAL --- */
@@ -372,7 +372,7 @@ input:disabled {
 }
 
 
-/* Live View (Área da Imagem) - FIXA/ESTÁTICA */
+/* Live View (Área da Imagem) */
 .live-view {
     /* No Desktop, ocupa 60% da altura da tela, mas não rola com a página */
     flex: 0 0 60%; 
@@ -835,64 +835,62 @@ input:disabled {
 /* ========================================= */
 @media (max-width: 768px) {
     body {
-        /* No mobile, mantemos a altura fixa para evitar rolagem da página toda */
-        height: 100vh;
-        overflow: hidden;
+        /* No mobile, habilita rolagem normal da página */
+        height: auto;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
     
     .app-container {
         flex-direction: column;
-        height: 100vh; /* Altura total da tela */
+        height: auto; /* Remove altura fixa */
+        display: block; /* Garante empilhamento padrão */
     }
     
-    /* Sidebar agora é um menu dobrável ou apenas o topo? 
-       Para simplicidade deste design, vamos transformá-lo num header compacto ou rodapé?
-       O usuário não pediu alterações na sidebar, mas para caber tudo, vamos deixá-la rolável ou recolhida.
-       Vou deixá-la acima por enquanto, mas com tamanho reduzido se precisar, ou scroll lateral.
-       
-       Melhor abordagem para "App Like": Sidebar vira um botão de menu ou drawer. 
-       Mas para manter simples sem reescrever tudo: Sidebar no topo com scroll horizontal se necessário,
-       ou apenas stack normal.
-       
-       Vou colocar a Sidebar "escondida" ou acima da visualização. 
-       Para priorizar o Visualizador Fixo pedido:
-    */
-    
+    /* 1. SIDEBAR (Controles - Prompts) */
     .sidebar {
         width: 100%;
         height: auto;
-        max-height: 25vh; /* Limita altura da sidebar no mobile */
+        max-height: none; /* Remove limite de altura */
         border-right: none;
         border-bottom: 1px solid var(--border);
-        padding: 10px;
+        padding: 15px;
         flex-shrink: 0;
+        position: relative; /* Remove comportamento de scroll independente */
+        overflow: visible;
     }
 
     .main-content {
-        flex: 1;
-        height: 75vh; /* Restante da tela */
-        display: flex;
-        flex-direction: column;
+        height: auto; /* Remove altura fixa */
+        overflow: visible; /* Remove scroll interno */
+        display: block;
     }
 
+    /* 2. VISUALIZADOR (Depois dos Prompts) */
     .live-view {
-        /* No mobile, visualizador fixo no topo da main content */
-        flex: 0 0 40%; /* Ocupa 40% do espaço disponível na main-content */
-        min-height: 200px;
-        padding: 10px;
+        /* Remove altura fixa e flex constraints */
+        flex: none; 
+        min-height: 50vh; /* Garante uma altura mínima razoável */
+        padding: 20px 0; /* Espaçamento vertical */
         background-color: #050505;
         border-bottom: 1px solid var(--border);
     }
     
     .live-view img {
-        max-height: 100%;
-        max-width: 100%;
+        /* Tamanho da imagem solicitado (90%) */
+        width: 90%; 
+        max-width: 90%;
+        max-height: none; /* Deixa crescer verticalmente se necessário */
+        height: auto;
+        object-fit: contain;
     }
 
+    /* 3. GALERIA (Abaixo do visualizador) */
     .gallery-section {
-        flex: 1; /* Ocupa o resto */
-        overflow-y: auto; /* Scroll independente */
-        padding-bottom: 60px; /* Espaço para dedos */
+        flex: none;
+        height: auto;
+        overflow: visible;
+        padding-bottom: 60px;
     }
 
     .gallery-grid {
@@ -904,10 +902,9 @@ input:disabled {
     }
     
     .btn-label {
-        display: none; /* Esconde texto dos botões na galeria mobile para economizar espaço */
+        display: none; 
     }
     
-    /* Ajuste da barra de pesquisa no mobile */
     .gallery-header {
         flex-wrap: nowrap;
     }
