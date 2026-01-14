@@ -707,7 +707,7 @@ function setupEventListeners() {
     els.saveSettingsBtn.addEventListener('click', saveConfig);
 
     // Toggle Galeria
-    els.toggleGalleryBtn.addEventListener('click', toggleGallery);
+    // els.toggleGalleryBtn.addEventListener('click', toggleGallery);
 
     // Seed
     els.randomSeedBtn.addEventListener('change', toggleSeedInput);
