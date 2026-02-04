@@ -22,12 +22,16 @@ const NODE_TRANSLATIONS = {
     'KSampler': 'Gerando (Amostragem)',
     'VAEDecode': 'Decodificando',
     'VAEDecodeTiled': 'Decodificando (Tiled)',
+    'VAEEncode': 'Codificando VAE',
+    'VAEEncodeTiled': 'Codificando VAE (Tiled)',
     'SaveImageWebsocket': 'Finalizando',
     'ImageUpscaleWithModel': 'Upscaling (IA)',
     'ImageScaleBy': 'Redimensionando',
+    'ImageScale': 'Redimensionando (Fixo)',
     'UpscaleModelLoader': 'Carregando Upscaler',
     'CLIPSetLastLayer': 'Configurando CLIP',
-    'VAEEncodeTiled': 'Codificando VAE'
+    'LoraLoader': 'Aplicando LoRA',
+    'LoraLoaderModelOnly': 'Aplicando LoRA (Modelo)'
 };
 
 // CONFIGURAÇÃO AXIOS PARA ZROK
