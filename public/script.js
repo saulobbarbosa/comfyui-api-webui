@@ -3,6 +3,7 @@ const API_BASE = window.location.origin;
 const els = {
     statusIndicator: document.getElementById('connectionStatus'),
     generateBtn: document.getElementById('generateBtn'),
+    loraInput: document.getElementById('loraInput'),
     positivePrompt: document.getElementById('positivePrompt'),
     negativePrompt: document.getElementById('negativePrompt'),
     widthInput: document.getElementById('widthInput'),
@@ -192,45 +193,31 @@ async function updateGallery() {
         const images = await response.json();
         
         const newSignature = JSON.stringify(images.map(img => img.filename));
-        
-        // Verifica se a lista mudou, mas também verifica se há um filtro ativo
-        // Se houver filtro ativo, precisamos re-filtrar mesmo que a assinatura seja igual (caso o usuário digite algo novo)
-        // No entanto, renderGallery chama o filtro, então só precisamos atualizar os dados
-        
         allGalleryImages = images;
 
         if (newSignature === lastGallerySignature) {
-            // Se os dados não mudaram, não faz nada a menos que a gente queira forçar por causa do filtro
-            // O evento 'input' do search já lida com o filtro em tempo real.
             return; 
         }
 
         lastGallerySignature = newSignature;
-        filterAndRenderGallery(); // Usa a função de filtro
+        filterAndRenderGallery(); 
 
     } catch (e) { 
         console.error("Erro ao atualizar galeria", e); 
     }
 }
 
-// Nova função de Filtragem
 function filterAndRenderGallery() {
     const query = els.searchInput.value.trim().toLowerCase();
     
     let filteredImages = allGalleryImages;
 
     if (query) {
-        // Lógica: Separa por vírgula, substitui _ por espaço
-        // Ex: "teste, teste_teste" vira ["teste", "teste teste"]
         const tags = query.split(',').map(tag => tag.trim().replace(/_/g, ' ')).filter(t => t);
         
         filteredImages = allGalleryImages.filter(img => {
-            // Procura nos metadados (principalmente prompt positivo)
-            // Se não tiver prompt salvo, tenta usar o filename ou falha
             const haystack = (img.positive || "") + " " + (img.filename || "");
             const haystackLower = haystack.toLowerCase();
-
-            // Verifica se TODAS as tags estão presentes (Lógica AND)
             return tags.every(tag => haystackLower.includes(tag));
         });
     }
@@ -284,22 +271,18 @@ function toggleSelectionMode() {
     updateSelectionUI();
     
     if (isSelectionMode) {
-        // Atualiza ícone do botão
         const btnIcon = els.toggleSelectModeBtn.querySelector('.material-icons');
         const btnLabel = els.toggleSelectModeBtn.querySelector('.btn-label');
         if(btnIcon) btnIcon.innerText = 'close';
         if(btnLabel) btnLabel.innerText = 'Cancelar';
-        
         els.toggleSelectModeBtn.style.color = 'var(--text-main)';
     } else {
         const btnIcon = els.toggleSelectModeBtn.querySelector('.material-icons');
         const btnLabel = els.toggleSelectModeBtn.querySelector('.btn-label');
         if(btnIcon) btnIcon.innerText = 'check_box';
         if(btnLabel) btnLabel.innerText = 'Selecionar';
-        
         els.toggleSelectModeBtn.style.color = '';
         document.querySelectorAll('.gallery-item.selected').forEach(el => el.classList.remove('selected'));
-        // Não reseta a assinatura para não piscar, apenas atualiza visualmente
         filterAndRenderGallery();
     }
 }
@@ -372,7 +355,6 @@ async function deleteBatchImages() {
     }
 }
 
-// --- FUNÇÃO PARA CANCELAR JOB ---
 async function cancelJob(promptId) {
     if (!promptId) return;
 
@@ -399,7 +381,6 @@ async function cancelJob(promptId) {
             });
             
             if (res.ok) {
-                // Notificação sutil
                 const toast = Swal.mixin({
                     toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff'
                 });
@@ -419,8 +400,6 @@ async function cancelJob(promptId) {
     }
 }
 
-
-// --- ATUALIZAÇÃO DA FILA ---
 async function updateQueue() {
     try {
         const res = await fetch(`${API_BASE}/api/queue`);
@@ -450,13 +429,11 @@ function renderQueue(queueData) {
 
         let statusText = 'Na Fila';
         
-        // --- ATUALIZAÇÃO: Usa o nome da etapa se disponível ---
         if (job.status === 'processing') {
             statusText = job.currentStep || 'Gerando...';
         }
         if (job.status === 'completed') statusText = 'Pronto';
 
-        // Cabeçalho do item da fila
         const header = document.createElement('div');
         header.className = "queue-header";
         
@@ -465,7 +442,6 @@ function renderQueue(queueData) {
         infoSpan.innerText = `Job #${job.id.substring(0,6)}`;
         header.appendChild(infoSpan);
 
-        // Grupo de Status e Cancelar
         const statusGroup = document.createElement('div');
         statusGroup.style.display = 'flex';
         statusGroup.style.alignItems = 'center';
@@ -476,14 +452,13 @@ function renderQueue(queueData) {
         statusBadge.innerText = statusText;
         statusGroup.appendChild(statusBadge);
 
-        // Botão de cancelar (apenas se não estiver completo)
         if (job.status !== 'completed') {
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'queue-cancel-btn';
             cancelBtn.innerHTML = '<span class="material-icons" style="font-size: 14px;">close</span>';
             cancelBtn.title = "Cancelar Job";
             cancelBtn.onclick = (e) => {
-                e.stopPropagation(); // Evita clique no item pai se houver
+                e.stopPropagation();
                 cancelJob(job.id);
             };
             statusGroup.appendChild(cancelBtn);
@@ -491,7 +466,6 @@ function renderQueue(queueData) {
         header.appendChild(statusGroup);
         item.appendChild(header);
 
-        // Barra de progresso mini
         const barBg = document.createElement('div');
         barBg.className = "queue-mini-bar-bg";
         const barFill = document.createElement('div');
@@ -511,7 +485,8 @@ function renderQueue(queueData) {
                     negative: job.metadata?.negative,
                     seed: job.metadata?.seed,
                     width: job.metadata?.width,
-                    height: job.metadata?.height
+                    height: job.metadata?.height,
+                    upscale: job.metadata?.upscale
                 };
                 item.onclick = () => displayImage(meta);
             } else {
@@ -553,7 +528,7 @@ els.generateBtn.addEventListener('click', async () => {
         els.generateBtn.removeAttribute('data-clicked');
     }, 1000);
 
-    // LÓGICA DE SEED
+    // --- INPUTS ---
     let seed;
     if (els.randomSeedBtn.checked) {
         seed = Math.floor(Math.random() * 10000000000);
@@ -564,56 +539,152 @@ els.generateBtn.addEventListener('click', async () => {
         }
     }
 
-    // LÓGICA DE UPSCALE (ATUALIZADA PARA FLOAT)
-    const upscaleLevel = parseFloat(els.upscaleInput.value); // Lê o valor como float (ex: 1.5, 2.5)
-    const scaleBy = upscaleLevel / 4; // Mapeia 1->0.25, 4->1.0
-
+    const upscaleLevel = parseFloat(els.upscaleInput.value); // ex: 1.5, 2.0, 4.0
     const width = parseInt(els.widthInput.value) || 1024;
     const height = parseInt(els.heightInput.value) || 1024;
     const positive = els.positivePrompt.value;
     const negative = els.negativePrompt.value;
+    const loraName = els.loraInput.value.trim();
 
-    // Definição Completa do Fluxo (Workflow)
-    const promptFlow = {
-        "1": { "inputs": { "ckpt_name": "WAI_NFSW.safetensors" }, "class_type": "CheckpointLoaderSimple" },
-        "8": { "inputs": { "clip": ["1", 1], "stop_at_clip_layer": -2 }, "class_type": "CLIPSetLastLayer" },
-        "9": { "inputs": { "text": positive, "clip": ["8", 0] }, "class_type": "CLIPTextEncode" },
-        "7": { "inputs": { "text": negative, "clip": ["8", 0] }, "class_type": "CLIPTextEncode" },
-        "3": { "inputs": { "width": width, "height": height, "batch_size": 1 }, "class_type": "EmptyLatentImage" },
-        "10": { "inputs": { "model_name": "RealESRGAN_x4plus_anime_6B.pth" }, "class_type": "UpscaleModelLoader" },
-        "2": { "inputs": { "model": ["1", 0], "positive": ["9", 0], "negative": ["7", 0], "latent_image": ["3", 0], "seed": seed, "steps": 30, "cfg": 7, "sampler_name": "euler_ancestral", "scheduler": "simple", "denoise": 1 }, "class_type": "KSampler" },
-        
-        // --- BLOCO DE UPSCALE (Padrão) ---
-        "4": { "inputs": { "samples": ["2", 0], "vae": ["1", 2], "tile_size": 512, "overlap": 64, "temporal_size": 64, "temporal_overlap": 8 }, "class_type": "VAEDecodeTiled" },
-        "11": { "inputs": { "upscale_model": ["10", 0], "image": ["4", 0] }, "class_type": "ImageUpscaleWithModel" },
-        "12": { "inputs": { "image": ["11", 0], "upscale_method": "nearest-exact", "scale_by": scaleBy }, "class_type": "ImageScaleBy" },
-        "5": { "inputs": { "pixels": ["12", 0], "vae": ["1", 2], "tile_size": 512, "overlap": 64, "temporal_size": 64, "temporal_overlap": 8 }, "class_type": "VAEEncodeTiled" },
-        "13": { "inputs": { "model": ["1", 0], "positive": ["9", 0], "negative": ["7", 0], "latent_image": ["5", 0], "seed": seed, "steps": 20, "cfg": 7, "sampler_name": "euler_ancestral", "scheduler": "simple", "denoise": 0.5 }, "class_type": "KSampler" },
-        
-        // --- SAÍDA FINAL ---
-        // Originalmente recebe do 13 (segundo sampler). Se upscale=1, receberá do 2 (primeiro sampler).
-        "14": { "inputs": { "samples": ["13", 0], "vae": ["1", 2], "tile_size": 512, "overlap": 64, "temporal_size": 64, "temporal_overlap": 8 }, "class_type": "VAEDecodeTiled" },
-        "15": { "inputs": { "images": ["14", 0] }, "class_type": "SaveImageWebsocket" }
+    // --- CONSTRUÇÃO DO WORKFLOW ---
+    const promptFlow = {};
+    
+    // 1. Checkpoint Loader
+    promptFlow["1"] = { 
+        inputs: { ckpt_name: "WAI_NFSW.safetensors" }, 
+        class_type: "CheckpointLoaderSimple" 
     };
 
-    // --- LÓGICA DE CONDICIONAL DE UPSCALE ---
-    // Se o upscale for 1x, pulamos todo o bloco de upscale e refinamento
-    if (upscaleLevel === 1.0) {
-        console.log("Upscale 1x detectado: Modo rápido ativado (Ignorando upscale e segundo sampler).");
-        
-        // Redireciona a entrada do nó final de Decode (14) para vir direto do primeiro KSampler (2)
-        promptFlow["14"].inputs.samples = ["2", 0];
+    // 5. CLIP Set Last Layer
+    promptFlow["5"] = {
+        inputs: { stop_at_clip_layer: -2, clip: ["1", 1] },
+        class_type: "CLIPSetLastLayer"
+    };
 
-        // Removemos os nós intermediários para limpar o processamento e evitar erros de validação ou uso de memória
-        delete promptFlow["4"];  // Decode intermediário
-        delete promptFlow["10"]; // Loader do modelo de upscale
-        delete promptFlow["11"]; // Upscaler
-        delete promptFlow["12"]; // Redimensionador
-        delete promptFlow["5"];  // Encode intermediário
-        delete promptFlow["13"]; // Segundo KSampler
+    // --- LÓGICA DO LORA ---
+    let modelSource = ["1", 0]; // Padrão: Checkpoint
+    
+    if (loraName) {
+        // Se houver LoRA, carregamos ele
+        promptFlow["6"] = {
+            inputs: {
+                lora_name: loraName,
+                strength_model: 1,
+                strength_clip: 1,
+                model: ["1", 0],
+                clip: ["1", 1]
+            },
+            class_type: "LoraLoader"
+        };
+        // O Sampler usará o modelo que sai do nó do LoRA
+        modelSource = ["6", 0];
+        
+        // NOTA: No exemplo fornecido, o TextEncode usa o CLIP original (do Node 5/1)
+        // e não o CLIP modificado pelo LoRA. Mantive essa lógica.
     }
 
-    const metadata = { positive, negative, seed, width, height, upscale: upscaleLevel };
+    // 2. Positive Prompt
+    promptFlow["2"] = { 
+        inputs: { text: positive, clip: ["5", 0] }, 
+        class_type: "CLIPTextEncode" 
+    };
+
+    // 4. Negative Prompt
+    promptFlow["4"] = { 
+        inputs: { text: negative, clip: ["5", 0] }, 
+        class_type: "CLIPTextEncode" 
+    };
+
+    // 8. Empty Latent
+    promptFlow["8"] = { 
+        inputs: { width: width, height: height, batch_size: 1 }, 
+        class_type: "EmptyLatentImage" 
+    };
+
+    // 7. KSampler (Primeira Passada)
+    promptFlow["7"] = {
+        inputs: {
+            seed: seed, steps: 30, cfg: 7, sampler_name: "euler_ancestral", scheduler: "simple", denoise: 1,
+            model: modelSource,
+            positive: ["2", 0],
+            negative: ["4", 0],
+            latent_image: ["8", 0]
+        },
+        class_type: "KSampler"
+    };
+
+    // 9. VAE Decode (PADRÃO - Substituiu o Tiled)
+    promptFlow["9"] = {
+        inputs: { samples: ["7", 0], vae: ["1", 2] },
+        class_type: "VAEDecode"
+    };
+
+    let finalImageNodeId = "9";
+
+    // --- BLOCO DE UPSCALE (Se > 1x) ---
+    if (upscaleLevel > 1.0) {
+        // 13. Carrega Modelo Upscale
+        promptFlow["13"] = { 
+            inputs: { model_name: "RealESRGAN_x4plus_anime_6B.pth" }, 
+            class_type: "UpscaleModelLoader" 
+        };
+
+        // 14. Aplica Upscale com Modelo (Gera imagem gigante)
+        promptFlow["14"] = {
+            inputs: { upscale_model: ["13", 0], image: ["9", 0] },
+            class_type: "ImageUpscaleWithModel"
+        };
+
+        // 15. Redimensiona para o tamanho final desejado
+        // Calcula o tamanho final: Largura Original * Fator Escolhido
+        const finalW = Math.round(width * upscaleLevel);
+        const finalH = Math.round(height * upscaleLevel);
+
+        promptFlow["15"] = {
+            inputs: { 
+                width: finalW, 
+                height: finalH, 
+                upscale_method: "nearest-exact", 
+                crop: "disabled", 
+                image: ["14", 0] 
+            },
+            class_type: "ImageScale"
+        };
+
+        // 16. VAE Encode (PADRÃO - Substituiu o Tiled)
+        promptFlow["16"] = {
+            inputs: { pixels: ["15", 0], vae: ["1", 2] },
+            class_type: "VAEEncode"
+        };
+
+        // 17. KSampler (Refinamento / Segunda Passada)
+        promptFlow["17"] = {
+            inputs: {
+                seed: seed, steps: 20, cfg: 7, sampler_name: "euler_ancestral", scheduler: "simple", denoise: 0.5,
+                model: modelSource, // Usa o mesmo modelo (com ou sem LoRA)
+                positive: ["2", 0],
+                negative: ["4", 0],
+                latent_image: ["16", 0]
+            },
+            class_type: "KSampler"
+        };
+
+        // 18. VAE Decode (PADRÃO - Substituiu o Tiled)
+        promptFlow["18"] = {
+            inputs: { samples: ["17", 0], vae: ["1", 2] },
+            class_type: "VAEDecode"
+        };
+        
+        finalImageNodeId = "18";
+    }
+
+    // 19. Salvar Imagem
+    promptFlow["19"] = {
+        inputs: { images: [finalImageNodeId, 0] },
+        class_type: "SaveImageWebsocket"
+    };
+
+    const metadata = { positive, negative, seed, width, height, upscale: upscaleLevel, lora: loraName };
 
     try {
         await fetch(`${API_BASE}/api/generate`, {
@@ -657,6 +728,7 @@ function showImageMetadata() {
     const positive = currentImageData.positive || "Não disponível";
     const negative = currentImageData.negative || "Não disponível";
     const seed = currentImageData.seed || "Desconhecido";
+    const lora = currentImageData.lora || "Nenhum";
     const dims = (currentImageData.width && currentImageData.height) ? `${currentImageData.width}x${currentImageData.height}` : "Desconhecido";
     const upscale = currentImageData.upscale ? `${currentImageData.upscale}x` : "Padrão";
 
@@ -667,6 +739,7 @@ function showImageMetadata() {
                 <p><strong style="color: #bb86fc;">Seed:</strong> ${seed}</p>
                 <p><strong style="color: #bb86fc;">Dimensões:</strong> ${dims}</p>
                 <p><strong style="color: #bb86fc;">Upscale:</strong> ${upscale}</p>
+                <p><strong style="color: #bb86fc;">LoRA:</strong> ${lora}</p>
                 <hr style="border-color: #333; margin: 10px 0;">
                 <p><strong style="color: #03dac6;">Positivo:</strong><br><span style="font-size:0.85rem; color: #ccc;">${positive}</span></p>
                 <div style="margin-top:10px;"></div>
@@ -700,7 +773,6 @@ function setupEventListeners() {
     els.toggleSelectModeBtn.addEventListener('click', toggleSelectionMode);
     els.deleteBatchBtn.addEventListener('click', deleteBatchImages);
     
-    // Pesquisa com debounce simples (ou direto no input se preferir tempo real instantâneo)
     els.searchInput.addEventListener('input', filterAndRenderGallery);
 
     // Configurações
