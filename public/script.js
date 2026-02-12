@@ -3,7 +3,16 @@ const API_BASE = window.location.origin;
 const els = {
     statusIndicator: document.getElementById('connectionStatus'),
     generateBtn: document.getElementById('generateBtn'),
-    loraInput: document.getElementById('loraInput'),
+    
+    // LoRA 
+    loraSelect: document.getElementById('loraSelect'),
+    manageLorasBtn: document.getElementById('manageLorasBtn'),
+    loraModal: document.getElementById('loraModal'),
+    closeLoraModalBtn: document.getElementById('closeLoraModalBtn'),
+    newLoraInput: document.getElementById('newLoraInput'),
+    addLoraBtn: document.getElementById('addLoraBtn'),
+    loraManagementList: document.getElementById('loraManagementList'),
+
     positivePrompt: document.getElementById('positivePrompt'),
     negativePrompt: document.getElementById('negativePrompt'),
     widthInput: document.getElementById('widthInput'),
@@ -30,7 +39,7 @@ const els = {
     deleteBatchBtn: document.getElementById('deleteBatchBtn'),
     selectedCount: document.getElementById('selectedCount'),
     
-    // Configurações
+    // Configurações ComfyUI
     settingsBtn: document.getElementById('settingsBtn'),
     settingsModal: document.getElementById('settingsModal'),
     closeSettingsBtn: document.getElementById('closeSettingsBtn'),
@@ -52,7 +61,7 @@ let lastGallerySignature = '';
 let currentImageData = null; 
 let isSelectionMode = false;
 let selectedImages = new Set();
-let allGalleryImages = []; // Armazena todas as imagens para filtro local
+let allGalleryImages = []; 
 
 // Tratamento de Erro Global
 window.onerror = function(message, source, lineno, colno, error) {
@@ -70,7 +79,8 @@ function init() {
     checkConnection();
     updateGallery(); 
     updateQueue();
-    fetchConfig(); // Pega a config atual ao iniciar
+    fetchConfig(); 
+    fetchLoras(); // Carrega os LoRAs salvos globalmente
 
     // Polling a cada 1 segundo
     setInterval(() => {
@@ -81,6 +91,106 @@ function init() {
         }
     }, 1000);
 }
+
+// --- Gerenciamento de LoRAs ---
+async function fetchLoras() {
+    try {
+        const res = await fetch(`${API_BASE}/api/loras`);
+        if (res.ok) {
+            const loras = await res.json();
+            renderLoraOptions(loras);
+            renderLoraManagementList(loras);
+        }
+    } catch (e) { console.error("Falha ao buscar LoRAs", e); }
+}
+
+function renderLoraOptions(loras) {
+    const currentValue = els.loraSelect.value;
+    els.loraSelect.innerHTML = '<option value="none">Nenhum</option>';
+    
+    loras.forEach(lora => {
+        const option = document.createElement('option');
+        option.value = lora;
+        option.textContent = lora;
+        els.loraSelect.appendChild(option);
+    });
+
+    // Mantém a seleção anterior se ela ainda existir
+    if (loras.includes(currentValue) || currentValue === 'none') {
+        els.loraSelect.value = currentValue;
+    }
+}
+
+function renderLoraManagementList(loras) {
+    els.loraManagementList.innerHTML = '';
+    
+    if (loras.length === 0) {
+        els.loraManagementList.innerHTML = '<p style="color: #666; font-size: 0.85rem;">Nenhum LoRA salvo.</p>';
+        return;
+    }
+
+    loras.forEach(lora => {
+        const item = document.createElement('div');
+        item.className = 'lora-item';
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = lora;
+        
+        const delBtn = document.createElement('button');
+        delBtn.className = 'icon-btn-plain';
+        delBtn.style.color = 'var(--error)';
+        delBtn.innerHTML = '<span class="material-icons" style="font-size: 1.1rem;">delete</span>';
+        delBtn.onclick = () => deleteLora(lora);
+
+        item.appendChild(nameSpan);
+        item.appendChild(delBtn);
+        els.loraManagementList.appendChild(item);
+    });
+}
+
+async function addLora() {
+    const name = els.newLoraInput.value.trim();
+    if (!name) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/loras`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+        
+        if (res.ok) {
+            els.newLoraInput.value = '';
+            fetchLoras(); // Atualiza a lista
+        }
+    } catch (e) {
+        console.error("Erro ao adicionar LoRA", e);
+    }
+}
+
+async function deleteLora(name) {
+    try {
+        const res = await fetch(`${API_BASE}/api/loras/${encodeURIComponent(name)}`, {
+            method: 'DELETE'
+        });
+        
+        if (res.ok) {
+            fetchLoras(); // Atualiza a lista
+        }
+    } catch (e) {
+        console.error("Erro ao deletar LoRA", e);
+    }
+}
+
+function openLoraModal() {
+    fetchLoras();
+    els.loraModal.classList.remove('hidden');
+}
+
+function closeLoraModal() {
+    els.loraModal.classList.add('hidden');
+}
+
 
 // --- Configurações & Conexão ---
 async function fetchConfig() {
@@ -117,7 +227,7 @@ async function saveConfig() {
                 showConfirmButton: false,
                 background: '#1e1e1e', color: '#fff'
             });
-            checkConnection(); // Força re-check
+            checkConnection(); 
         } else {
             throw new Error('Falha na resposta do servidor');
         }
@@ -161,7 +271,7 @@ function setOnlineStatus(isOnline) {
 
 // --- Funções de UI Auxiliares ---
 function openSettings() {
-    fetchConfig(); // Garante que está atualizado ao abrir
+    fetchConfig(); 
     els.settingsModal.classList.remove('hidden');
 }
 
@@ -343,6 +453,7 @@ async function deleteBatchImages() {
             toggleSelectionMode();
             lastGallerySignature = "";
             updateGallery();
+            closeImage(); // Fecha caso alguma imagem afetada estivesse aberta
 
         } catch (e) {
             Swal.fire({
@@ -486,7 +597,8 @@ function renderQueue(queueData) {
                     seed: job.metadata?.seed,
                     width: job.metadata?.width,
                     height: job.metadata?.height,
-                    upscale: job.metadata?.upscale
+                    upscale: job.metadata?.upscale,
+                    lora: job.metadata?.lora
                 };
                 item.onclick = () => displayImage(meta);
             } else {
@@ -539,12 +651,13 @@ els.generateBtn.addEventListener('click', async () => {
         }
     }
 
-    const upscaleLevel = parseFloat(els.upscaleInput.value); // ex: 1.5, 2.0, 4.0
+    const upscaleLevel = parseFloat(els.upscaleInput.value); 
     const width = parseInt(els.widthInput.value) || 1024;
     const height = parseInt(els.heightInput.value) || 1024;
     const positive = els.positivePrompt.value;
     const negative = els.negativePrompt.value;
-    const loraName = els.loraInput.value.trim();
+    // Pega o valor do select (se for 'none', envia vazio para não ativar o fluxo LoRA)
+    const loraName = els.loraSelect.value === 'none' ? '' : els.loraSelect.value;
 
     // --- CONSTRUÇÃO DO WORKFLOW ---
     const promptFlow = {};
@@ -578,9 +691,6 @@ els.generateBtn.addEventListener('click', async () => {
         };
         // O Sampler usará o modelo que sai do nó do LoRA
         modelSource = ["6", 0];
-        
-        // NOTA: No exemplo fornecido, o TextEncode usa o CLIP original (do Node 5/1)
-        // e não o CLIP modificado pelo LoRA. Mantive essa lógica.
     }
 
     // 2. Positive Prompt
@@ -613,7 +723,7 @@ els.generateBtn.addEventListener('click', async () => {
         class_type: "KSampler"
     };
 
-    // 9. VAE Decode (PADRÃO - Substituiu o Tiled)
+    // 9. VAE Decode (PADRÃO)
     promptFlow["9"] = {
         inputs: { samples: ["7", 0], vae: ["1", 2] },
         class_type: "VAEDecode"
@@ -623,20 +733,16 @@ els.generateBtn.addEventListener('click', async () => {
 
     // --- BLOCO DE UPSCALE (Se > 1x) ---
     if (upscaleLevel > 1.0) {
-        // 13. Carrega Modelo Upscale
         promptFlow["13"] = { 
             inputs: { model_name: "RealESRGAN_x4plus_anime_6B.pth" }, 
             class_type: "UpscaleModelLoader" 
         };
 
-        // 14. Aplica Upscale com Modelo (Gera imagem gigante)
         promptFlow["14"] = {
             inputs: { upscale_model: ["13", 0], image: ["9", 0] },
             class_type: "ImageUpscaleWithModel"
         };
 
-        // 15. Redimensiona para o tamanho final desejado
-        // Calcula o tamanho final: Largura Original * Fator Escolhido
         const finalW = Math.round(width * upscaleLevel);
         const finalH = Math.round(height * upscaleLevel);
 
@@ -651,17 +757,15 @@ els.generateBtn.addEventListener('click', async () => {
             class_type: "ImageScale"
         };
 
-        // 16. VAE Encode (PADRÃO - Substituiu o Tiled)
         promptFlow["16"] = {
             inputs: { pixels: ["15", 0], vae: ["1", 2] },
             class_type: "VAEEncode"
         };
 
-        // 17. KSampler (Refinamento / Segunda Passada)
         promptFlow["17"] = {
             inputs: {
                 seed: seed, steps: 20, cfg: 7, sampler_name: "euler_ancestral", scheduler: "simple", denoise: 0.5,
-                model: modelSource, // Usa o mesmo modelo (com ou sem LoRA)
+                model: modelSource, 
                 positive: ["2", 0],
                 negative: ["4", 0],
                 latent_image: ["16", 0]
@@ -669,7 +773,6 @@ els.generateBtn.addEventListener('click', async () => {
             class_type: "KSampler"
         };
 
-        // 18. VAE Decode (PADRÃO - Substituiu o Tiled)
         promptFlow["18"] = {
             inputs: { samples: ["17", 0], vae: ["1", 2] },
             class_type: "VAEDecode"
@@ -684,7 +787,7 @@ els.generateBtn.addEventListener('click', async () => {
         class_type: "SaveImageWebsocket"
     };
 
-    const metadata = { positive, negative, seed, width, height, upscale: upscaleLevel, lora: loraName };
+    const metadata = { positive, negative, seed, width, height, upscale: upscaleLevel, lora: loraName || "Nenhum" };
 
     try {
         await fetch(`${API_BASE}/api/generate`, {
@@ -711,7 +814,7 @@ function displayImage(imgData) {
     currentImageData = imgData; 
     els.resultImage.src = imgData.url;
     els.resultImage.classList.remove('hidden');
-    els.imageActions.classList.remove('hidden');
+    els.imageActions.classList.remove('hidden'); // Mostra a barra superior
     els.placeholder.classList.add('hidden');
 }
 
@@ -774,6 +877,15 @@ function setupEventListeners() {
     els.deleteBatchBtn.addEventListener('click', deleteBatchImages);
     
     els.searchInput.addEventListener('input', filterAndRenderGallery);
+
+    // LoRA Modal
+    els.manageLorasBtn.addEventListener('click', openLoraModal);
+    els.closeLoraModalBtn.addEventListener('click', closeLoraModal);
+    els.addLoraBtn.addEventListener('click', addLora);
+    // Adicionar Lora com tecla Enter
+    els.newLoraInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addLora();
+    });
 
     // Configurações
     els.settingsBtn.addEventListener('click', openSettings);
