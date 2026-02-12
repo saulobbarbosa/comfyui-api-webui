@@ -34,6 +34,13 @@ const NODE_TRANSLATIONS = {
     'LoraLoaderModelOnly': 'Aplicando LoRA (Modelo)'
 };
 
+// ARQUIVO PARA SALVAR LORAS GLOBAIS
+const LORAS_FILE = path.join(__dirname, 'loras.json');
+// Inicializa o arquivo de LoRAs se não existir
+if (!fs.existsSync(LORAS_FILE)) {
+    fs.writeFileSync(LORAS_FILE, JSON.stringify(["ongjolpark_lora.safetensors"], null, 2));
+}
+
 // CONFIGURAÇÃO AXIOS PARA ZROK
 axios.defaults.headers.common['skip_zrok_interstitial'] = '1';
 
@@ -326,6 +333,45 @@ app.post('/api/config', (req, res) => {
 app.get('/api/status', (req, res) => {
     res.json({ connected: isComfyUIConnected });
 });
+
+// --- ROTAS DE GERENCIAMENTO DE LORAS ---
+app.get('/api/loras', (req, res) => {
+    try {
+        const loras = JSON.parse(fs.readFileSync(LORAS_FILE, 'utf-8'));
+        res.json(loras);
+    } catch (e) {
+        res.json([]);
+    }
+});
+
+app.post('/api/loras', (req, res) => {
+    const { name } = req.body;
+    if (!name || typeof name !== 'string') return res.status(400).json({ error: "Nome inválido" });
+    
+    try {
+        let loras = JSON.parse(fs.readFileSync(LORAS_FILE, 'utf-8'));
+        if (!loras.includes(name.trim())) {
+            loras.push(name.trim());
+            fs.writeFileSync(LORAS_FILE, JSON.stringify(loras, null, 2));
+        }
+        res.json({ success: true, loras });
+    } catch (e) {
+        res.status(500).json({ error: "Falha ao salvar LoRA" });
+    }
+});
+
+app.delete('/api/loras/:name', (req, res) => {
+    const name = req.params.name;
+    try {
+        let loras = JSON.parse(fs.readFileSync(LORAS_FILE, 'utf-8'));
+        loras = loras.filter(l => l !== name);
+        fs.writeFileSync(LORAS_FILE, JSON.stringify(loras, null, 2));
+        res.json({ success: true, loras });
+    } catch (e) {
+        res.status(500).json({ error: "Falha ao deletar LoRA" });
+    }
+});
+// ----------------------------------------
 
 // 1. Gerar
 app.post('/api/generate', async (req, res) => {
