@@ -238,7 +238,7 @@ label {
     letter-spacing: 0.5px;
 }
 
-textarea, input[type="text"], input[type="number"] {
+textarea, input[type="text"], input[type="number"], .custom-select {
     background-color: #2c2c2c;
     border: 1px solid var(--border);
     color: var(--text-main);
@@ -252,7 +252,7 @@ textarea, input[type="text"], input[type="number"] {
     display: block;
 }
 
-textarea:focus, input:focus {
+textarea:focus, input:focus, .custom-select:focus {
     outline: none;
     border-color: var(--primary);
     background-color: #333;
@@ -262,6 +262,23 @@ input:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     background-color: #202020;
+}
+
+.custom-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a0a0a0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px;
+    padding-right: 40px;
+    cursor: pointer;
+}
+
+.custom-select option {
+    background-color: #2c2c2c;
+    color: #fff;
 }
 
 /* Buttons */
@@ -359,9 +376,7 @@ input:disabled {
     height: 100vh; /* Garante que ocupa a altura total */
 }
 
-/* ESTADO: GALERIA OCULTA 
-    Quando a classe .gallery-hidden é adicionada ao .main-content
-*/
+/* ESTADO: GALERIA OCULTA */
 .main-content.gallery-hidden .gallery-section {
     display: none !important;
 }
@@ -372,23 +387,51 @@ input:disabled {
 }
 
 
-/* Live View (Área da Imagem) */
+/* Live View (Área da Imagem e Header) */
 .live-view {
-    /* No Desktop, ocupa 60% da altura da tela, mas não rola com a página */
+    /* No Desktop, ocupa 60% da altura da tela */
     flex: 0 0 60%; 
     display: flex;
-    justify-content: center;
-    align-items: center;
+    flex-direction: column; /* Transforma em uma coluna (Header em cima, conteúdo em baixo) */
     position: relative;
     overflow: hidden;
-    padding: 20px;
+    padding: 20px 20px 30px 20px; /* Padding extra em baixo para a barra de progresso */
     background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
     background-size: 20px 20px;
     border-bottom: 1px solid var(--border);
-    transition: flex-basis 0.3s ease, flex 0.3s ease; /* Transição suave ao ocultar galeria */
+    transition: flex-basis 0.3s ease, flex 0.3s ease; 
 }
 
-.live-view img {
+/* Cabeçalho da Live View (Ícones) */
+.live-view-header {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+    padding-bottom: 10px;
+    z-index: 50;
+}
+
+.actions-group {
+    display: flex;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px;
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Container que segura a imagem no centro */
+.live-view-content {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    width: 100%;
+}
+
+.live-view-content img {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
@@ -415,21 +458,7 @@ input:disabled {
     display: none !important;
 }
 
-/* Image Actions */
-.image-actions {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    display: flex;
-    gap: 10px;
-    z-index: 50;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 8px;
-    border-radius: 8px;
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
+/* Botões de Ação da Imagem */
 .action-btn {
     border: none;
     color: white;
@@ -465,14 +494,14 @@ input:disabled {
     color: black;
 }
 
-/* Progress Overlay */
+/* Progress Overlay (Fica no rodapé da live-view) */
 .progress-overlay {
     position: absolute;
-    bottom: 30px;
+    bottom: 15px; /* Fixo próximo à borda inferior */
     left: 50%;
     transform: translateX(-50%);
     background: var(--overlay-bg);
-    padding: 15px 25px;
+    padding: 10px 20px;
     border-radius: 50px;
     display: flex;
     align-items: center;
@@ -753,7 +782,7 @@ input:disabled {
     transition: width 0.3s ease;
 }
 
-/* --- MODAL --- */
+/* --- MODAIS --- */
 .modal {
     position: fixed;
     top: 0;
@@ -829,6 +858,35 @@ input:disabled {
     padding: 10px 20px;
 }
 
+/* Modal LoRA Específicos */
+.lora-input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.lora-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.lora-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #252525;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+
+.lora-item span {
+    font-size: 0.9rem;
+    word-break: break-all;
+}
 
 /* ========================================= */
 /* RESPONSIVIDADE MOBILE         */
@@ -871,12 +929,12 @@ input:disabled {
         /* Remove altura fixa e flex constraints */
         flex: none; 
         min-height: 50vh; /* Garante uma altura mínima razoável */
-        padding: 20px 0; /* Espaçamento vertical */
+        padding: 20px; /* Espaçamento vertical */
         background-color: #050505;
         border-bottom: 1px solid var(--border);
     }
     
-    .live-view img {
+    .live-view-content img {
         /* Tamanho da imagem solicitado (90%) */
         width: 90%; 
         max-width: 90%;
