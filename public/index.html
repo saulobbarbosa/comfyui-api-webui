@@ -31,9 +31,18 @@
             </div>
 
             <div class="controls">
+                <!-- Controle de LoRA com Select -->
                 <div class="control-group">
-                    <label>LoRA (Opcional)</label>
-                    <input type="text" id="loraInput" placeholder="Ex: ongjolpark_lora.safetensors">
+                    <div class="slider-header">
+                        <label>LoRA (Opcional)</label>
+                        <button id="manageLorasBtn" class="text-btn" title="Gerenciar LoRAs" style="padding: 0;">
+                            <span class="material-icons" style="font-size: 1.1rem;">edit</span>
+                        </button>
+                    </div>
+                    <select id="loraSelect" class="custom-select">
+                        <option value="none">Nenhum</option>
+                        <!-- Options renderizados via JS -->
+                    </select>
                 </div>
 
                 <div class="control-group">
@@ -102,27 +111,31 @@
         <main class="main-content">
             <!-- Área de Visualização (Live View) FIXA -->
             <div class="live-view">
-                <div id="placeholder" class="placeholder">
-                    <span class="material-icons">image</span>
-                    <p>Aguardando geração...</p>
-                </div>
-                
-                <img id="resultImage" class="hidden" alt="Resultado">
-
-                <!-- Botões flutuantes sobre a imagem -->
-                <div id="imageActions" class="image-actions hidden">
-                    <button id="infoImgBtn" class="action-btn info" title="Ver Metadados (Prompt/Seed)">
-                        <span class="material-icons">info</span>
-                    </button>
-                    <button id="deleteImgBtn" class="action-btn delete" title="Excluir">
-                        <span class="material-icons">delete</span>
-                    </button>
-                    <button id="closeImgBtn" class="action-btn close" title="Fechar Visualização">
-                        <span class="material-icons">close</span>
-                    </button>
+                <!-- Cabeçalho de ações (agora relativo e fora da imagem) -->
+                <div id="imageActions" class="live-view-header hidden">
+                    <div class="actions-group">
+                        <button id="infoImgBtn" class="action-btn info" title="Ver Metadados (Prompt/Seed)">
+                            <span class="material-icons">info</span>
+                        </button>
+                        <button id="deleteImgBtn" class="action-btn delete" title="Excluir">
+                            <span class="material-icons">delete</span>
+                        </button>
+                        <button id="closeImgBtn" class="action-btn close" title="Fechar Visualização">
+                            <span class="material-icons">close</span>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Overlay de Progresso -->
+                <!-- Área de conteúdo onde a imagem e o placeholder ficam -->
+                <div class="live-view-content">
+                    <div id="placeholder" class="placeholder">
+                        <span class="material-icons">image</span>
+                        <p>Aguardando geração...</p>
+                    </div>
+                    <img id="resultImage" class="hidden" alt="Resultado">
+                </div>
+
+                <!-- Overlay de Progresso (Fixo no fundo da live-view) -->
                 <div id="progressOverlay" class="progress-overlay hidden">
                     <div class="spinner"></div>
                     <div class="progress-bar-container">
@@ -157,6 +170,32 @@
                 <div id="galleryGrid" class="gallery-grid"></div>
             </div>
         </main>
+    </div>
+
+    <!-- MODAL DE CONFIGURAÇÕES DE LORA -->
+    <div id="loraModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Gerenciador de LoRAs</h2>
+                <button id="closeLoraModalBtn" class="icon-btn-plain"><span class="material-icons">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="control-group">
+                    <label>Adicionar Novo LoRA</label>
+                    <div class="lora-input-group">
+                        <input type="text" id="newLoraInput" placeholder="Ex: anime_style.safetensors">
+                        <button id="addLoraBtn" class="primary-btn" style="width: auto; padding: 10px 15px;">Add</button>
+                    </div>
+                </div>
+                
+                <div class="control-group" style="margin-top: 20px;">
+                    <label>LoRAs Salvos</label>
+                    <div id="loraManagementList" class="lora-list">
+                        <!-- Itens renderizados via JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL DE CONFIGURAÇÕES -->
