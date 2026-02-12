@@ -31,11 +31,11 @@
             </div>
 
             <div class="controls">
-                <!-- Controle de LoRA com Select -->
+                <!-- Controle de LoRA com Select e Botão Normalizado -->
                 <div class="control-group">
-                    <div class="slider-header">
+                    <div class="slider-header" style="margin-bottom: 6px;">
                         <label>LoRA (Opcional)</label>
-                        <button id="manageLorasBtn" class="text-btn" title="Gerenciar LoRAs" style="padding: 0;">
+                        <button id="manageLorasBtn" class="edit-lora-btn" title="Gerenciar Lista de LoRAs">
                             <span class="material-icons" style="font-size: 1.1rem;">edit</span>
                         </button>
                     </div>
@@ -70,7 +70,6 @@
                         <label>Nível de Upscale</label>
                         <span id="upscaleValueDisplay" class="value-display">1x</span>
                     </div>
-                    <!-- Alterado step para 0.5 -->
                     <input type="range" id="upscaleInput" min="1" max="4" value="1" step="0.5" class="slider">
                     <div class="slider-labels">
                         <small>Rápido (1x)</small>
@@ -111,7 +110,7 @@
         <main class="main-content">
             <!-- Área de Visualização (Live View) FIXA -->
             <div class="live-view">
-                <!-- Cabeçalho de ações (agora relativo e fora da imagem) -->
+                <!-- Cabeçalho de ações -->
                 <div id="imageActions" class="live-view-header hidden">
                     <div class="actions-group">
                         <button id="infoImgBtn" class="action-btn info" title="Ver Metadados (Prompt/Seed)">
@@ -184,7 +183,7 @@
                     <label>Adicionar Novo LoRA</label>
                     <div class="lora-input-group">
                         <input type="text" id="newLoraInput" placeholder="Ex: anime_style.safetensors">
-                        <button id="addLoraBtn" class="primary-btn" style="width: auto; padding: 10px 15px;">Add</button>
+                        <button id="addLoraBtn" class="primary-btn" style="width: auto; padding: 10px 15px;">Adicionar</button>
                     </div>
                 </div>
                 
@@ -198,7 +197,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CONFIGURAÇÕES -->
+    <!-- MODAL DE CONFIGURAÇÕES GERAIS -->
     <div id="settingsModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
