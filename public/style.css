@@ -175,7 +175,7 @@ input[type=range].slider::-webkit-slider-thumb {
     background: var(--primary);
     cursor: pointer;
     -webkit-appearance: none;
-    margin-top: -7px; /* Centralizar verticalmente no track */
+    margin-top: -7px;
     box-shadow: 0 0 5px rgba(0,0,0,0.5);
     transition: background 0.2s, transform 0.2s;
 }
@@ -281,7 +281,27 @@ input:disabled {
     color: #fff;
 }
 
-/* Buttons */
+/* Novo estilo normalizado para o botão de gerenciar LoRA */
+.edit-lora-btn {
+    background-color: #2c2c2c;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: 4px;
+    transition: all 0.2s ease-in-out;
+}
+
+.edit-lora-btn:hover {
+    background-color: #333;
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+/* Buttons Genéricos */
 .primary-btn {
     background-color: var(--primary);
     color: #000;
@@ -373,7 +393,7 @@ input:disabled {
     overflow: hidden;
     position: relative;
     background-color: #0a0a0a;
-    height: 100vh; /* Garante que ocupa a altura total */
+    height: 100vh;
 }
 
 /* ESTADO: GALERIA OCULTA */
@@ -382,20 +402,18 @@ input:disabled {
 }
 
 .main-content.gallery-hidden .live-view {
-    flex: 1; /* Ocupa 100% do espaço restante */
+    flex: 1;
     border-bottom: none;
 }
 
-
 /* Live View (Área da Imagem e Header) */
 .live-view {
-    /* No Desktop, ocupa 60% da altura da tela */
     flex: 0 0 60%; 
     display: flex;
-    flex-direction: column; /* Transforma em uma coluna (Header em cima, conteúdo em baixo) */
+    flex-direction: column;
     position: relative;
     overflow: hidden;
-    padding: 20px 20px 30px 20px; /* Padding extra em baixo para a barra de progresso */
+    padding: 20px 20px 30px 20px; 
     background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
     background-size: 20px 20px;
     border-bottom: 1px solid var(--border);
@@ -494,10 +512,10 @@ input:disabled {
     color: black;
 }
 
-/* Progress Overlay (Fica no rodapé da live-view) */
+/* Progress Overlay */
 .progress-overlay {
     position: absolute;
-    bottom: 15px; /* Fixo próximo à borda inferior */
+    bottom: 15px; 
     left: 50%;
     transform: translateX(-50%);
     background: var(--overlay-bg);
@@ -544,9 +562,9 @@ input:disabled {
 
 /* --- GALLERY (Área Rolável) --- */
 .gallery-section {
-    flex: 1; /* Ocupa o restante da tela */
+    flex: 1;
     background-color: var(--bg-panel);
-    overflow-y: auto; /* Permite rolar apenas esta seção */
+    overflow-y: auto; 
     padding: 15px;
     display: flex;
     flex-direction: column;
@@ -621,7 +639,7 @@ input:disabled {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 10px;
-    padding-bottom: 20px; /* Espaço extra no final */
+    padding-bottom: 20px;
 }
 
 .gallery-item {
@@ -717,7 +735,6 @@ input:disabled {
     margin-bottom: 5px;
 }
 
-/* Botão de Cancelar Fila */
 .queue-cancel-btn {
     background: none;
     border: none;
@@ -731,7 +748,7 @@ input:disabled {
     transition: all 0.2s;
     width: 20px;
     height: 20px;
-    flex-shrink: 0; /* Impede que o botão encolha */
+    flex-shrink: 0; 
 }
 
 .queue-cancel-btn:hover {
@@ -752,12 +769,10 @@ input:disabled {
     background: #333;
     color: #aaa;
     text-transform: uppercase;
-    
-    /* Ajustes para textos longos de etapa */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 140px; /* Limite máximo para não quebrar a linha */
+    max-width: 140px; 
     text-align: right;
 }
 
@@ -893,7 +908,6 @@ input:disabled {
 /* ========================================= */
 @media (max-width: 768px) {
     body {
-        /* No mobile, habilita rolagem normal da página */
         height: auto;
         overflow-y: auto;
         overflow-x: hidden;
@@ -901,49 +915,44 @@ input:disabled {
     
     .app-container {
         flex-direction: column;
-        height: auto; /* Remove altura fixa */
-        display: block; /* Garante empilhamento padrão */
+        height: auto; 
+        display: block; 
     }
     
-    /* 1. SIDEBAR (Controles - Prompts) */
     .sidebar {
         width: 100%;
         height: auto;
-        max-height: none; /* Remove limite de altura */
+        max-height: none; 
         border-right: none;
         border-bottom: 1px solid var(--border);
         padding: 15px;
         flex-shrink: 0;
-        position: relative; /* Remove comportamento de scroll independente */
+        position: relative; 
         overflow: visible;
     }
 
     .main-content {
-        height: auto; /* Remove altura fixa */
-        overflow: visible; /* Remove scroll interno */
+        height: auto; 
+        overflow: visible; 
         display: block;
     }
 
-    /* 2. VISUALIZADOR (Depois dos Prompts) */
     .live-view {
-        /* Remove altura fixa e flex constraints */
         flex: none; 
-        min-height: 50vh; /* Garante uma altura mínima razoável */
-        padding: 20px; /* Espaçamento vertical */
+        min-height: 50vh; 
+        padding: 20px; 
         background-color: #050505;
         border-bottom: 1px solid var(--border);
     }
     
     .live-view-content img {
-        /* Tamanho da imagem solicitado (90%) */
         width: 90%; 
         max-width: 90%;
-        max-height: none; /* Deixa crescer verticalmente se necessário */
+        max-height: none; 
         height: auto;
         object-fit: contain;
     }
 
-    /* 3. GALERIA (Abaixo do visualizador) */
     .gallery-section {
         flex: none;
         height: auto;
