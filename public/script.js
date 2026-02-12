@@ -627,7 +627,9 @@ function renderQueue(queueData) {
 }
 
 // --- GERAÇÃO DE IMAGEM ---
-els.generateBtn.addEventListener('click', async () => {
+els.generateBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+
     if(!els.positivePrompt.value.trim()) {
         Swal.fire({ icon: 'warning', title: 'Atenção', text: 'O prompt positivo não pode estar vazio.', background: '#1e1e1e', color: '#fff' });
         return;
@@ -871,30 +873,37 @@ function toggleGallery() {
 
 // --- Event Listeners ---
 function setupEventListeners() {
-    els.closeImgBtn.addEventListener('click', closeImage);
-    els.infoImgBtn.addEventListener('click', showImageMetadata);
-    els.toggleSelectModeBtn.addEventListener('click', toggleSelectionMode);
-    els.deleteBatchBtn.addEventListener('click', deleteBatchImages);
+    els.closeImgBtn.addEventListener('click', (e) => { e.preventDefault(); closeImage(); });
+    els.infoImgBtn.addEventListener('click', (e) => { e.preventDefault(); showImageMetadata(); });
+    els.toggleSelectModeBtn.addEventListener('click', (e) => { e.preventDefault(); toggleSelectionMode(); });
+    els.deleteBatchBtn.addEventListener('click', (e) => { e.preventDefault(); deleteBatchImages(); });
     
     els.searchInput.addEventListener('input', filterAndRenderGallery);
 
     // LoRA Modal
-    els.manageLorasBtn.addEventListener('click', openLoraModal);
-    els.closeLoraModalBtn.addEventListener('click', closeLoraModal);
-    els.addLoraBtn.addEventListener('click', addLora);
+    els.manageLorasBtn.addEventListener('click', (e) => {
+        e.preventDefault(); 
+        openLoraModal();
+    });
+    els.closeLoraModalBtn.addEventListener('click', (e) => { e.preventDefault(); closeLoraModal(); });
+    els.addLoraBtn.addEventListener('click', (e) => { e.preventDefault(); addLora(); });
+    
     // Adicionar Lora com tecla Enter
     els.newLoraInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') addLora();
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addLora();
+        }
     });
 
     // Configurações
-    els.settingsBtn.addEventListener('click', openSettings);
-    els.closeSettingsBtn.addEventListener('click', closeSettings);
-    els.cancelSettingsAction.addEventListener('click', closeSettings);
-    els.saveSettingsBtn.addEventListener('click', saveConfig);
+    els.settingsBtn.addEventListener('click', (e) => { e.preventDefault(); openSettings(); });
+    els.closeSettingsBtn.addEventListener('click', (e) => { e.preventDefault(); closeSettings(); });
+    els.cancelSettingsAction.addEventListener('click', (e) => { e.preventDefault(); closeSettings(); });
+    els.saveSettingsBtn.addEventListener('click', (e) => { e.preventDefault(); saveConfig(); });
 
     // Toggle Galeria
-    els.toggleGalleryBtn.addEventListener('click', toggleGallery);
+    els.toggleGalleryBtn.addEventListener('click', (e) => { e.preventDefault(); toggleGallery(); });
 
     // Seed
     els.randomSeedBtn.addEventListener('change', toggleSeedInput);
@@ -903,7 +912,8 @@ function setupEventListeners() {
     els.upscaleInput.addEventListener('input', updateUpscaleDisplay);
 
     // Deletar Único
-    els.deleteImgBtn.addEventListener('click', async () => {
+    els.deleteImgBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
         if (!currentImageData || !currentImageData.filename) return;
         const result = await Swal.fire({
             title: 'Excluir imagem?', text: "Você não poderá reverter isso!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'Sim, excluir!', cancelButtonText: 'Cancelar', background: '#1e1e1e', color: '#fff'
@@ -915,7 +925,7 @@ function setupEventListeners() {
                 lastGallerySignature = ""; 
                 updateGallery(); 
                 closeImage();
-            } catch (e) {
+            } catch (err) {
                 Swal.fire({ icon: 'error', title: 'Erro', text: 'Não foi possível excluir.', background: '#1e1e1e', color: '#fff' });
             }
         }
