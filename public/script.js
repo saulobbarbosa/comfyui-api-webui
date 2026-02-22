@@ -5,7 +5,8 @@ const els = {
     generateBtn: document.getElementById('generateBtn'),
     
     // LoRA 
-    loraSelect: document.getElementById('loraSelect'),
+    activeLorasContainer: document.getElementById('activeLorasContainer'),
+    addLoraRowBtn: document.getElementById('addLoraRowBtn'),
     manageLorasBtn: document.getElementById('manageLorasBtn'),
     loraModal: document.getElementById('loraModal'),
     closeLoraModalBtn: document.getElementById('closeLoraModalBtn'),
@@ -62,6 +63,7 @@ let currentImageData = null;
 let isSelectionMode = false;
 let selectedImages = new Set();
 let allGalleryImages = []; 
+let availableLoras = []; 
 
 // Tratamento de Erro Global
 window.onerror = function(message, source, lineno, colno, error) {
@@ -97,28 +99,93 @@ async function fetchLoras() {
     try {
         const res = await fetch(`${API_BASE}/api/loras`);
         if (res.ok) {
-            const loras = await res.json();
-            renderLoraOptions(loras);
-            renderLoraManagementList(loras);
+            availableLoras = await res.json();
+            updateAllLoraSelects();
+            renderLoraManagementList(availableLoras);
         }
     } catch (e) { console.error("Falha ao buscar LoRAs", e); }
 }
 
-function renderLoraOptions(loras) {
-    const currentValue = els.loraSelect.value;
-    els.loraSelect.innerHTML = '<option value="none">Nenhum</option>';
+function updateAllLoraSelects() {
+    const selects = document.querySelectorAll('.lora-select');
+    selects.forEach(select => {
+        const currentValue = select.value;
+        select.innerHTML = '<option value="none">Nenhum</option>';
+        availableLoras.forEach(lora => {
+            const option = document.createElement('option');
+            option.value = lora;
+            option.textContent = lora;
+            select.appendChild(option);
+        });
+        if (availableLoras.includes(currentValue) || currentValue === 'none') {
+            select.value = currentValue;
+        }
+    });
+}
+
+function createLoraRow() {
+    const row = document.createElement('div');
+    row.className = 'lora-row';
     
-    loras.forEach(lora => {
+    const header = document.createElement('div');
+    header.className = 'lora-row-header';
+    
+    const select = document.createElement('select');
+    select.className = 'custom-select lora-select';
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-lora-btn';
+    removeBtn.innerHTML = '<span class="material-icons">delete</span>';
+    removeBtn.title = "Remover LoRA";
+    removeBtn.onclick = (e) => {
+        e.preventDefault();
+        row.remove();
+    };
+    
+    header.appendChild(select);
+    header.appendChild(removeBtn);
+    
+    const weightContainer = document.createElement('div');
+    weightContainer.className = 'lora-weight-control';
+    
+    const label = document.createElement('label');
+    label.innerText = 'Força';
+    
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.className = 'slider lora-weight-slider';
+    slider.min = '-2.0';
+    slider.max = '2.0';
+    slider.step = '0.05';
+    slider.value = '1.0';
+    
+    const numberInput = document.createElement('input');
+    numberInput.type = 'number';
+    numberInput.className = 'lora-weight-number';
+    numberInput.min = '-2.0';
+    numberInput.max = '2.0';
+    numberInput.step = '0.05';
+    numberInput.value = '1.0';
+    
+    slider.oninput = () => numberInput.value = slider.value;
+    numberInput.oninput = () => slider.value = numberInput.value;
+    
+    weightContainer.appendChild(label);
+    weightContainer.appendChild(slider);
+    weightContainer.appendChild(numberInput);
+    
+    row.appendChild(header);
+    row.appendChild(weightContainer);
+    
+    els.activeLorasContainer.appendChild(row);
+    
+    select.innerHTML = '<option value="none">Nenhum</option>';
+    availableLoras.forEach(lora => {
         const option = document.createElement('option');
         option.value = lora;
         option.textContent = lora;
-        els.loraSelect.appendChild(option);
+        select.appendChild(option);
     });
-
-    // Mantém a seleção anterior se ela ainda existir
-    if (loras.includes(currentValue) || currentValue === 'none') {
-        els.loraSelect.value = currentValue;
-    }
 }
 
 function renderLoraManagementList(loras) {
@@ -658,8 +725,15 @@ els.generateBtn.addEventListener('click', async (e) => {
     const height = parseInt(els.heightInput.value) || 1024;
     const positive = els.positivePrompt.value;
     const negative = els.negativePrompt.value;
-    // Pega o valor do select (se for 'none', envia vazio para não ativar o fluxo LoRA)
-    const loraName = els.loraSelect.value === 'none' ? '' : els.loraSelect.value;
+    const activeLoras = [];
+    const loraRows = document.querySelectorAll('.lora-row');
+    loraRows.forEach(row => {
+        const loraName = row.querySelector('.lora-select').value;
+        const loraWeight = parseFloat(row.querySelector('.lora-weight-slider').value) || 1.0;
+        if (loraName && loraName !== 'none') {
+            activeLoras.push({ name: loraName, weight: loraWeight });
+        }
+    });
 
     // --- CONSTRUÇÃO DO WORKFLOW ---
     const promptFlow = {};
@@ -679,21 +753,22 @@ els.generateBtn.addEventListener('click', async (e) => {
     // --- LÓGICA DO LORA ---
     let modelSource = ["1", 0]; // Padrão: Checkpoint
     
-    if (loraName) {
-        // Se houver LoRA, carregamos ele
-        promptFlow["6"] = {
+    // Nós para múltiplos LoRAs começam do id 100
+    let currentLoraNodeId = 100;
+    
+    activeLoras.forEach(lora => {
+        const nodeId = currentLoraNodeId.toString();
+        promptFlow[nodeId] = {
             inputs: {
-                lora_name: loraName,
-                strength_model: 1,
-                strength_clip: 1,
-                model: ["1", 0],
-                clip: ["1", 1]
+                lora_name: lora.name,
+                strength_model: lora.weight,
+                model: modelSource
             },
-            class_type: "LoraLoader"
+            class_type: "LoraLoaderModelOnly"
         };
-        // O Sampler usará o modelo que sai do nó do LoRA
-        modelSource = ["6", 0];
-    }
+        modelSource = [nodeId, 0];
+        currentLoraNodeId++;
+    });
 
     // 2. Positive Prompt
     promptFlow["2"] = { 
@@ -789,7 +864,8 @@ els.generateBtn.addEventListener('click', async (e) => {
         class_type: "SaveImageWebsocket"
     };
 
-    const metadata = { positive, negative, seed, width, height, upscale: upscaleLevel, lora: loraName || "Nenhum" };
+    const loraMeta = activeLoras.length > 0 ? activeLoras.map(l => `${l.name} (${l.weight})`).join(', ') : "Nenhum";
+    const metadata = { positive, negative, seed, width, height, upscale: upscaleLevel, lora: loraMeta };
 
     try {
         await fetch(`${API_BASE}/api/generate`, {
@@ -881,6 +957,10 @@ function setupEventListeners() {
     els.searchInput.addEventListener('input', filterAndRenderGallery);
 
     // LoRA Modal
+    els.addLoraRowBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        createLoraRow();
+    });
     els.manageLorasBtn.addEventListener('click', (e) => {
         e.preventDefault(); 
         openLoraModal();

@@ -31,18 +31,22 @@
             </div>
 
             <div class="controls">
-                <!-- Controle de LoRA com Select e Botão Normalizado -->
+                <!-- Controle de LoRAs Múltiplos -->
                 <div class="control-group">
                     <div class="slider-header" style="margin-bottom: 6px;">
-                        <label>LoRA (Opcional)</label>
-                        <button id="manageLorasBtn" class="edit-lora-btn" title="Gerenciar Lista de LoRAs">
-                            <span class="material-icons" style="font-size: 1.1rem;">edit</span>
-                        </button>
+                        <label>LoRAs</label>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="addLoraRowBtn" class="icon-btn" style="border-radius: 4px; padding: 4px; background: rgba(255,255,255,0.05);" title="Adicionar LoRA">
+                                <span class="material-icons" style="font-size: 1.1rem;">add</span>
+                            </button>
+                            <button id="manageLorasBtn" class="edit-lora-btn" title="Gerenciar Lista de LoRAs">
+                                <span class="material-icons" style="font-size: 1.1rem;">edit</span>
+                            </button>
+                        </div>
                     </div>
-                    <select id="loraSelect" class="custom-select">
-                        <option value="none">Nenhum</option>
-                        <!-- Options renderizados via JS -->
-                    </select>
+                    <div id="activeLorasContainer" class="active-loras-container">
+                        <!-- Linhas de LoRA injetadas via JS -->
+                    </div>
                 </div>
 
                 <div class="control-group">
