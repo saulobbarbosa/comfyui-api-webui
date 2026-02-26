@@ -3,7 +3,7 @@ const API_BASE = window.location.origin;
 const els = {
     statusIndicator: document.getElementById('connectionStatus'),
     generateBtn: document.getElementById('generateBtn'),
-    
+
     // LoRA 
     activeLorasContainer: document.getElementById('activeLorasContainer'),
     addLoraRowBtn: document.getElementById('addLoraRowBtn'),
@@ -18,7 +18,7 @@ const els = {
     negativePrompt: document.getElementById('negativePrompt'),
     widthInput: document.getElementById('widthInput'),
     heightInput: document.getElementById('heightInput'),
-    
+
     // Controle de Upscale
     upscaleInput: document.getElementById('upscaleInput'),
     upscaleValueDisplay: document.getElementById('upscaleValueDisplay'),
@@ -34,12 +34,12 @@ const els = {
     imageActions: document.getElementById('imageActions'),
     closeImgBtn: document.getElementById('closeImgBtn'),
     deleteImgBtn: document.getElementById('deleteImgBtn'),
-    infoImgBtn: document.getElementById('infoImgBtn'), 
+    infoImgBtn: document.getElementById('infoImgBtn'),
     queueList: document.getElementById('queueList'),
     toggleSelectModeBtn: document.getElementById('toggleSelectModeBtn'),
     deleteBatchBtn: document.getElementById('deleteBatchBtn'),
     selectedCount: document.getElementById('selectedCount'),
-    
+
     // Configurações ComfyUI
     settingsBtn: document.getElementById('settingsBtn'),
     settingsModal: document.getElementById('settingsModal'),
@@ -59,14 +59,14 @@ const els = {
 
 // Estado da Aplicação
 let lastGallerySignature = '';
-let currentImageData = null; 
+let currentImageData = null;
 let isSelectionMode = false;
 let selectedImages = new Set();
-let allGalleryImages = []; 
-let availableLoras = []; 
+let allGalleryImages = [];
+let availableLoras = [];
 
 // Tratamento de Erro Global
-window.onerror = function(message, source, lineno, colno, error) {
+window.onerror = function (message, source, lineno, colno, error) {
     console.error("Erro global:", message);
     return false;
 };
@@ -74,22 +74,22 @@ window.onerror = function(message, source, lineno, colno, error) {
 // --- Inicialização ---
 function init() {
     setupEventListeners();
-    
+
     // Inicia com a galeria oculta por padrão
     toggleGallery();
 
     checkConnection();
-    updateGallery(); 
+    updateGallery();
     updateQueue();
-    fetchConfig(); 
+    fetchConfig();
     fetchLoras(); // Carrega os LoRAs salvos globalmente
 
     // Polling a cada 1 segundo
     setInterval(() => {
         checkConnection();
         updateQueue();
-        if (!isSelectionMode) { 
-            updateGallery(); 
+        if (!isSelectionMode) {
+            updateGallery();
         }
     }, 1000);
 }
@@ -126,13 +126,13 @@ function updateAllLoraSelects() {
 function createLoraRow() {
     const row = document.createElement('div');
     row.className = 'lora-row';
-    
+
     const header = document.createElement('div');
     header.className = 'lora-row-header';
-    
+
     const select = document.createElement('select');
     select.className = 'custom-select lora-select';
-    
+
     const removeBtn = document.createElement('button');
     removeBtn.className = 'remove-lora-btn';
     removeBtn.innerHTML = '<span class="material-icons">delete</span>';
@@ -141,16 +141,16 @@ function createLoraRow() {
         e.preventDefault();
         row.remove();
     };
-    
+
     header.appendChild(select);
     header.appendChild(removeBtn);
-    
+
     const weightContainer = document.createElement('div');
     weightContainer.className = 'lora-weight-control';
-    
+
     const label = document.createElement('label');
     label.innerText = 'Força';
-    
+
     const slider = document.createElement('input');
     slider.type = 'range';
     slider.className = 'slider lora-weight-slider';
@@ -158,7 +158,7 @@ function createLoraRow() {
     slider.max = '2.0';
     slider.step = '0.05';
     slider.value = '1.0';
-    
+
     const numberInput = document.createElement('input');
     numberInput.type = 'number';
     numberInput.className = 'lora-weight-number';
@@ -166,19 +166,19 @@ function createLoraRow() {
     numberInput.max = '2.0';
     numberInput.step = '0.05';
     numberInput.value = '1.0';
-    
+
     slider.oninput = () => numberInput.value = slider.value;
     numberInput.oninput = () => slider.value = numberInput.value;
-    
+
     weightContainer.appendChild(label);
     weightContainer.appendChild(slider);
     weightContainer.appendChild(numberInput);
-    
+
     row.appendChild(header);
     row.appendChild(weightContainer);
-    
+
     els.activeLorasContainer.appendChild(row);
-    
+
     select.innerHTML = '<option value="none">Nenhum</option>';
     availableLoras.forEach(lora => {
         const option = document.createElement('option');
@@ -190,7 +190,7 @@ function createLoraRow() {
 
 function renderLoraManagementList(loras) {
     els.loraManagementList.innerHTML = '';
-    
+
     if (loras.length === 0) {
         els.loraManagementList.innerHTML = '<p style="color: #666; font-size: 0.85rem;">Nenhum LoRA salvo.</p>';
         return;
@@ -199,10 +199,10 @@ function renderLoraManagementList(loras) {
     loras.forEach(lora => {
         const item = document.createElement('div');
         item.className = 'lora-item';
-        
+
         const nameSpan = document.createElement('span');
         nameSpan.textContent = lora;
-        
+
         const delBtn = document.createElement('button');
         delBtn.className = 'icon-btn-plain';
         delBtn.style.color = 'var(--error)';
@@ -225,7 +225,7 @@ async function addLora() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name })
         });
-        
+
         if (res.ok) {
             els.newLoraInput.value = '';
             fetchLoras(); // Atualiza a lista
@@ -240,7 +240,7 @@ async function deleteLora(name) {
         const res = await fetch(`${API_BASE}/api/loras/${encodeURIComponent(name)}`, {
             method: 'DELETE'
         });
-        
+
         if (res.ok) {
             fetchLoras(); // Atualiza a lista
         }
@@ -281,7 +281,7 @@ async function saveConfig() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: newUrl })
         });
-        
+
         if (res.ok) {
             const data = await res.json();
             els.serverAddressDisplay.innerText = `Conectado a ${data.api}`;
@@ -294,7 +294,7 @@ async function saveConfig() {
                 showConfirmButton: false,
                 background: '#1e1e1e', color: '#fff'
             });
-            checkConnection(); 
+            checkConnection();
         } else {
             throw new Error('Falha na resposta do servidor');
         }
@@ -338,7 +338,7 @@ function setOnlineStatus(isOnline) {
 
 // --- Funções de UI Auxiliares ---
 function openSettings() {
-    fetchConfig(); 
+    fetchConfig();
     els.settingsModal.classList.remove('hidden');
 }
 
@@ -368,30 +368,30 @@ async function updateGallery() {
     try {
         const response = await fetch(`${API_BASE}/api/gallery`);
         const images = await response.json();
-        
+
         const newSignature = JSON.stringify(images.map(img => img.filename));
         allGalleryImages = images;
 
         if (newSignature === lastGallerySignature) {
-            return; 
+            return;
         }
 
         lastGallerySignature = newSignature;
-        filterAndRenderGallery(); 
+        filterAndRenderGallery();
 
-    } catch (e) { 
-        console.error("Erro ao atualizar galeria", e); 
+    } catch (e) {
+        console.error("Erro ao atualizar galeria", e);
     }
 }
 
 function filterAndRenderGallery() {
     const query = els.searchInput.value.trim().toLowerCase();
-    
+
     let filteredImages = allGalleryImages;
 
     if (query) {
         const tags = query.split(',').map(tag => tag.trim().replace(/_/g, ' ')).filter(t => t);
-        
+
         filteredImages = allGalleryImages.filter(img => {
             const haystack = (img.positive || "") + " " + (img.filename || "");
             const haystackLower = haystack.toLowerCase();
@@ -403,8 +403,8 @@ function filterAndRenderGallery() {
 }
 
 function renderGalleryGrid(images) {
-    els.galleryGrid.innerHTML = ''; 
-    
+    els.galleryGrid.innerHTML = '';
+
     if (images.length === 0) {
         const msg = els.searchInput.value ? 'Nenhuma imagem encontrada para esta pesquisa.' : 'Sem imagens';
         els.galleryGrid.innerHTML = `<p style="color:#666; width:100%; text-align:center; padding: 20px; grid-column: 1/-1;">${msg}</p>`;
@@ -420,7 +420,7 @@ function addToGallery(imgData) {
     const div = document.createElement('div');
     div.className = 'gallery-item';
     div.dataset.filename = imgData.filename;
-    
+
     if (selectedImages.has(imgData.filename)) {
         div.classList.add('selected');
     }
@@ -428,7 +428,8 @@ function addToGallery(imgData) {
     const img = document.createElement('img');
     img.src = imgData.url;
     img.loading = "lazy";
-    
+    img.decoding = "async";
+
     div.onclick = () => {
         if (isSelectionMode) {
             toggleSelection(div, imgData.filename);
@@ -436,7 +437,7 @@ function addToGallery(imgData) {
             displayImage(imgData);
         }
     };
-    
+
     div.appendChild(img);
     els.galleryGrid.appendChild(div);
 }
@@ -446,18 +447,18 @@ function toggleSelectionMode() {
     isSelectionMode = !isSelectionMode;
     selectedImages.clear();
     updateSelectionUI();
-    
+
     if (isSelectionMode) {
         const btnIcon = els.toggleSelectModeBtn.querySelector('.material-icons');
         const btnLabel = els.toggleSelectModeBtn.querySelector('.btn-label');
-        if(btnIcon) btnIcon.innerText = 'close';
-        if(btnLabel) btnLabel.innerText = 'Cancelar';
+        if (btnIcon) btnIcon.innerText = 'close';
+        if (btnLabel) btnLabel.innerText = 'Cancelar';
         els.toggleSelectModeBtn.style.color = 'var(--text-main)';
     } else {
         const btnIcon = els.toggleSelectModeBtn.querySelector('.material-icons');
         const btnLabel = els.toggleSelectModeBtn.querySelector('.btn-label');
-        if(btnIcon) btnIcon.innerText = 'check_box';
-        if(btnLabel) btnLabel.innerText = 'Selecionar';
+        if (btnIcon) btnIcon.innerText = 'check_box';
+        if (btnLabel) btnLabel.innerText = 'Selecionar';
         els.toggleSelectModeBtn.style.color = '';
         document.querySelectorAll('.gallery-item.selected').forEach(el => el.classList.remove('selected'));
         filterAndRenderGallery();
@@ -557,7 +558,7 @@ async function cancelJob(promptId) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ promptId })
             });
-            
+
             if (res.ok) {
                 const toast = Swal.mixin({
                     toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff'
@@ -606,7 +607,7 @@ function renderQueue(queueData) {
         if (job.status === 'processing') item.classList.add('active');
 
         let statusText = 'Na Fila';
-        
+
         if (job.status === 'processing') {
             statusText = job.currentStep || 'Gerando...';
         }
@@ -614,10 +615,10 @@ function renderQueue(queueData) {
 
         const header = document.createElement('div');
         header.className = "queue-header";
-        
+
         const infoSpan = document.createElement('span');
         infoSpan.className = "queue-id";
-        infoSpan.innerText = `Job #${job.id.substring(0,6)}`;
+        infoSpan.innerText = `Job #${job.id.substring(0, 6)}`;
         header.appendChild(infoSpan);
 
         const statusGroup = document.createElement('div');
@@ -656,8 +657,8 @@ function renderQueue(queueData) {
             if (job.outputUrl) {
                 item.style.cursor = 'pointer';
                 item.title = "Clique para visualizar";
-                const meta = { 
-                    url: job.outputUrl, 
+                const meta = {
+                    url: job.outputUrl,
                     filename: job.filename,
                     positive: job.metadata?.positive,
                     negative: job.metadata?.negative,
@@ -671,7 +672,7 @@ function renderQueue(queueData) {
             } else {
                 item.style.opacity = "0.5";
                 item.title = "Erro: Imagem não recebida";
-                if(statusBadge) {
+                if (statusBadge) {
                     statusBadge.innerText = "Erro/Timeout";
                     statusBadge.style.color = "#cf6679";
                 }
@@ -697,7 +698,7 @@ function renderQueue(queueData) {
 els.generateBtn.addEventListener('click', async (e) => {
     e.preventDefault();
 
-    if(!els.positivePrompt.value.trim()) {
+    if (!els.positivePrompt.value.trim()) {
         Swal.fire({ icon: 'warning', title: 'Atenção', text: 'O prompt positivo não pode estar vazio.', background: '#1e1e1e', color: '#fff' });
         return;
     }
@@ -720,7 +721,7 @@ els.generateBtn.addEventListener('click', async (e) => {
         }
     }
 
-    const upscaleLevel = parseFloat(els.upscaleInput.value); 
+    const upscaleLevel = parseFloat(els.upscaleInput.value);
     const width = parseInt(els.widthInput.value) || 1024;
     const height = parseInt(els.heightInput.value) || 1024;
     const positive = els.positivePrompt.value;
@@ -737,11 +738,11 @@ els.generateBtn.addEventListener('click', async (e) => {
 
     // --- CONSTRUÇÃO DO WORKFLOW ---
     const promptFlow = {};
-    
+
     // 1. Checkpoint Loader
-    promptFlow["1"] = { 
-        inputs: { ckpt_name: "WAI_NFSW.safetensors" }, 
-        class_type: "CheckpointLoaderSimple" 
+    promptFlow["1"] = {
+        inputs: { ckpt_name: "WAI_NFSW.safetensors" },
+        class_type: "CheckpointLoaderSimple"
     };
 
     // 5. CLIP Set Last Layer
@@ -752,10 +753,10 @@ els.generateBtn.addEventListener('click', async (e) => {
 
     // --- LÓGICA DO LORA ---
     let modelSource = ["1", 0]; // Padrão: Checkpoint
-    
+
     // Nós para múltiplos LoRAs começam do id 100
     let currentLoraNodeId = 100;
-    
+
     activeLoras.forEach(lora => {
         const nodeId = currentLoraNodeId.toString();
         promptFlow[nodeId] = {
@@ -771,21 +772,21 @@ els.generateBtn.addEventListener('click', async (e) => {
     });
 
     // 2. Positive Prompt
-    promptFlow["2"] = { 
-        inputs: { text: positive, clip: ["5", 0] }, 
-        class_type: "CLIPTextEncode" 
+    promptFlow["2"] = {
+        inputs: { text: positive, clip: ["5", 0] },
+        class_type: "CLIPTextEncode"
     };
 
     // 4. Negative Prompt
-    promptFlow["4"] = { 
-        inputs: { text: negative, clip: ["5", 0] }, 
-        class_type: "CLIPTextEncode" 
+    promptFlow["4"] = {
+        inputs: { text: negative, clip: ["5", 0] },
+        class_type: "CLIPTextEncode"
     };
 
     // 8. Empty Latent
-    promptFlow["8"] = { 
-        inputs: { width: width, height: height, batch_size: 1 }, 
-        class_type: "EmptyLatentImage" 
+    promptFlow["8"] = {
+        inputs: { width: width, height: height, batch_size: 1 },
+        class_type: "EmptyLatentImage"
     };
 
     // 7. KSampler (Primeira Passada)
@@ -810,9 +811,9 @@ els.generateBtn.addEventListener('click', async (e) => {
 
     // --- BLOCO DE UPSCALE (Se > 1x) ---
     if (upscaleLevel > 1.0) {
-        promptFlow["13"] = { 
-            inputs: { model_name: "RealESRGAN_x4plus_anime_6B.pth" }, 
-            class_type: "UpscaleModelLoader" 
+        promptFlow["13"] = {
+            inputs: { model_name: "RealESRGAN_x4plus_anime_6B.pth" },
+            class_type: "UpscaleModelLoader"
         };
 
         promptFlow["14"] = {
@@ -824,12 +825,12 @@ els.generateBtn.addEventListener('click', async (e) => {
         const finalH = Math.round(height * upscaleLevel);
 
         promptFlow["15"] = {
-            inputs: { 
-                width: finalW, 
-                height: finalH, 
-                upscale_method: "nearest-exact", 
-                crop: "disabled", 
-                image: ["14", 0] 
+            inputs: {
+                width: finalW,
+                height: finalH,
+                upscale_method: "nearest-exact",
+                crop: "disabled",
+                image: ["14", 0]
             },
             class_type: "ImageScale"
         };
@@ -842,7 +843,7 @@ els.generateBtn.addEventListener('click', async (e) => {
         promptFlow["17"] = {
             inputs: {
                 seed: seed, steps: 20, cfg: 7, sampler_name: "euler_ancestral", scheduler: "simple", denoise: 0.5,
-                model: modelSource, 
+                model: modelSource,
                 positive: ["2", 0],
                 negative: ["4", 0],
                 latent_image: ["16", 0]
@@ -854,7 +855,7 @@ els.generateBtn.addEventListener('click', async (e) => {
             inputs: { samples: ["17", 0], vae: ["1", 2] },
             class_type: "VAEDecode"
         };
-        
+
         finalImageNodeId = "18";
     }
 
@@ -873,8 +874,8 @@ els.generateBtn.addEventListener('click', async (e) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: promptFlow, metadata: metadata })
         });
-        updateQueue(); 
-        
+        updateQueue();
+
         const toast = Swal.mixin({
             toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true, background: '#1e1e1e', color: '#fff'
         });
@@ -889,7 +890,7 @@ els.generateBtn.addEventListener('click', async (e) => {
 
 // --- Visualização de Imagem ---
 function displayImage(imgData) {
-    currentImageData = imgData; 
+    currentImageData = imgData;
     els.resultImage.src = imgData.url;
     els.resultImage.classList.remove('hidden');
     els.imageActions.classList.remove('hidden'); // Mostra a barra superior
@@ -934,10 +935,10 @@ function showImageMetadata() {
 // --- Toggle de Galeria ---
 function toggleGallery() {
     els.mainContent.classList.toggle('gallery-hidden');
-    
+
     const isHidden = els.mainContent.classList.contains('gallery-hidden');
     const icon = els.toggleGalleryBtn.querySelector('.material-icons');
-    
+
     if (isHidden) {
         icon.innerText = 'visibility_off';
         els.toggleGalleryBtn.title = "Mostrar Galeria";
@@ -953,7 +954,7 @@ function setupEventListeners() {
     els.infoImgBtn.addEventListener('click', (e) => { e.preventDefault(); showImageMetadata(); });
     els.toggleSelectModeBtn.addEventListener('click', (e) => { e.preventDefault(); toggleSelectionMode(); });
     els.deleteBatchBtn.addEventListener('click', (e) => { e.preventDefault(); deleteBatchImages(); });
-    
+
     els.searchInput.addEventListener('input', filterAndRenderGallery);
 
     // LoRA Modal
@@ -962,12 +963,12 @@ function setupEventListeners() {
         createLoraRow();
     });
     els.manageLorasBtn.addEventListener('click', (e) => {
-        e.preventDefault(); 
+        e.preventDefault();
         openLoraModal();
     });
     els.closeLoraModalBtn.addEventListener('click', (e) => { e.preventDefault(); closeLoraModal(); });
     els.addLoraBtn.addEventListener('click', (e) => { e.preventDefault(); addLora(); });
-    
+
     // Adicionar Lora com tecla Enter
     els.newLoraInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -1002,8 +1003,8 @@ function setupEventListeners() {
             try {
                 await fetch(`${API_BASE}/api/image/${currentImageData.filename}`, { method: 'DELETE' });
                 Swal.fire({ title: 'Excluído!', text: 'A imagem foi removida.', icon: 'success', timer: 1500, showConfirmButton: false, background: '#1e1e1e', color: '#fff' });
-                lastGallerySignature = ""; 
-                updateGallery(); 
+                lastGallerySignature = "";
+                updateGallery();
                 closeImage();
             } catch (err) {
                 Swal.fire({ icon: 'error', title: 'Erro', text: 'Não foi possível excluir.', background: '#1e1e1e', color: '#fff' });

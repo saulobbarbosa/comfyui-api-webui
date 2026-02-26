@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ComfyUI Node Station</title>
+    <link rel="preload" href="style.css" as="style">
     <link rel="stylesheet" href="style.css">
     <!-- Ícones Material Design -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -36,7 +37,9 @@
                     <div class="slider-header" style="margin-bottom: 6px;">
                         <label>LoRAs</label>
                         <div style="display: flex; gap: 8px;">
-                            <button id="addLoraRowBtn" class="icon-btn" style="border-radius: 4px; padding: 4px; background: rgba(255,255,255,0.05);" title="Adicionar LoRA">
+                            <button id="addLoraRowBtn" class="icon-btn"
+                                style="border-radius: 4px; padding: 4px; background: rgba(255,255,255,0.05);"
+                                title="Adicionar LoRA">
                                 <span class="material-icons" style="font-size: 1.1rem;">add</span>
                             </button>
                             <button id="manageLorasBtn" class="edit-lora-btn" title="Gerenciar Lista de LoRAs">
@@ -51,11 +54,13 @@
 
                 <div class="control-group">
                     <label>Prompt Positivo</label>
-                    <textarea id="positivePrompt" rows="4">masterpiece, best quality, amazing quality, 1girl, solo, simple background, white background</textarea>
+                    <textarea id="positivePrompt"
+                        rows="4">masterpiece, best quality, amazing quality, 1girl, solo, simple background, white background</textarea>
                 </div>
                 <div class="control-group">
                     <label>Prompt Negativo</label>
-                    <textarea id="negativePrompt" rows="3">bad quality, worst quality, worst detail, sketch, censor, bad anatomy, (bad hands:1.3), (multiple views:1.5)</textarea>
+                    <textarea id="negativePrompt"
+                        rows="3">bad quality, worst quality, worst detail, sketch, censor, bad anatomy, (bad hands:1.3), (multiple views:1.5)</textarea>
                 </div>
                 <div class="control-group row">
                     <div class="input-wrapper">
@@ -92,7 +97,7 @@
                         </label>
                     </div>
                 </div>
-                
+
                 <button id="generateBtn" class="primary-btn">
                     <span class="material-icons">auto_awesome</span> Gerar Imagem
                 </button>
@@ -135,7 +140,7 @@
                         <span class="material-icons">image</span>
                         <p>Aguardando geração...</p>
                     </div>
-                    <img id="resultImage" class="hidden" alt="Resultado">
+                    <img id="resultImage" class="hidden" alt="Resultado" decoding="async">
                 </div>
 
                 <!-- Overlay de Progresso (Fixo no fundo da live-view) -->
@@ -158,14 +163,16 @@
                             <input type="text" id="searchInput" placeholder="Pesquisar tags (ex: cat, blue_sky)...">
                         </div>
                     </div>
-                    
+
                     <div class="gallery-tools">
                         <button id="toggleSelectModeBtn" class="text-btn">
-                            <span class="material-icons" style="font-size: 1.1rem; vertical-align: middle;">check_box</span> 
+                            <span class="material-icons"
+                                style="font-size: 1.1rem; vertical-align: middle;">check_box</span>
                             <span class="btn-label">Selecionar</span>
                         </button>
                         <button id="deleteBatchBtn" class="text-btn delete-batch hidden">
-                            <span class="material-icons" style="font-size: 1.1rem; vertical-align: middle;">delete</span> 
+                            <span class="material-icons"
+                                style="font-size: 1.1rem; vertical-align: middle;">delete</span>
                             <span class="btn-label">Excluir (<span id="selectedCount">0</span>)</span>
                         </button>
                     </div>
@@ -187,10 +194,11 @@
                     <label>Adicionar Novo LoRA</label>
                     <div class="lora-input-group">
                         <input type="text" id="newLoraInput" placeholder="Ex: anime_style.safetensors">
-                        <button id="addLoraBtn" class="primary-btn" style="width: auto; padding: 10px 15px;">Adicionar</button>
+                        <button id="addLoraBtn" class="primary-btn"
+                            style="width: auto; padding: 10px 15px;">Adicionar</button>
                     </div>
                 </div>
-                
+
                 <div class="control-group" style="margin-top: 20px;">
                     <label>LoRAs Salvos</label>
                     <div id="loraManagementList" class="lora-list">
@@ -211,7 +219,8 @@
             <div class="modal-body">
                 <div class="control-group">
                     <label>URL Base do ComfyUI</label>
-                    <p style="font-size: 0.8rem; color: #888; margin-bottom: 5px;">Ex: http://127.0.0.1:8188 ou link do Zrok</p>
+                    <p style="font-size: 0.8rem; color: #888; margin-bottom: 5px;">Ex: http://127.0.0.1:8188 ou link do
+                        Zrok</p>
                     <input type="text" id="comfyUrlInput" placeholder="http://127.0.0.1:8188">
                 </div>
             </div>
@@ -222,6 +231,7 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js" defer></script>
 </body>
+
 </html>

@@ -5,14 +5,16 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const axios = require('axios');
 const WebSocket = require('ws');
+const compression = require('compression');
+const sharp = require('sharp');
 
 const app = express();
 const PORT = 3000;
 
 // CONFIGURAÇÃO DO COMFYUI (Dinâmica)
 // Default Zrok address, pode ser alterado via API
-let COMFY_API_URL = "https://5uruggdvp6an.share.zrok.io"; 
-let COMFY_WS_URL = "wss://5uruggdvp6an.share.zrok.io/ws";
+let COMFY_API_URL = "http://192.168.68.102:8188";
+let COMFY_WS_URL = "ws://192.168.68.102:8188/ws";
 
 // MAPA DE TRADUÇÃO DE NÓS (Para nomes amigáveis na UI)
 const NODE_TRANSLATIONS = {
@@ -45,17 +47,18 @@ if (!fs.existsSync(LORAS_FILE)) {
 axios.defaults.headers.common['skip_zrok_interstitial'] = '1';
 
 app.use(cors());
+app.use(compression());
 app.use(bodyParser.json({ limit: '50mb' }));
-app.use(express.static('public'));
-app.use('/gallery', express.static('gallery'));
+app.use(express.static('public', { maxAge: '1d' }));
+app.use('/gallery', express.static('gallery', { maxAge: '7d' }));
 
 const GALLERY_DIR = path.join(__dirname, 'gallery');
 if (!fs.existsSync(GALLERY_DIR)) fs.mkdirSync(GALLERY_DIR);
 
 // Memória de Jobs e Estado
-const activeJobs = new Map(); 
-let currentRunningPromptId = null; 
-let isComfyUIConnected = false; 
+const activeJobs = new Map();
+let currentRunningPromptId = null;
+let isComfyUIConnected = false;
 let wsConnection = null;
 
 // Rotina de limpeza de jobs estagnados (Ex: WebSocket caiu e não reportou erro)
@@ -76,7 +79,7 @@ function finalizeJob(promptId, filename, job) {
 
     // Salvar Metadados (JSON sidecar)
     if (job.metadata) {
-        const jsonFilename = filename.replace('.png', '.json');
+        const jsonFilename = filename.replace(/\.(png|webp)$/i, '.json');
         const jsonPath = path.join(GALLERY_DIR, jsonFilename);
         try {
             fs.writeFileSync(jsonPath, JSON.stringify(job.metadata, null, 2));
@@ -94,7 +97,7 @@ function finalizeJob(promptId, filename, job) {
     activeJobs.set(promptId, job);
 
     console.log(`[Servidor] Job ${promptId} concluído com sucesso (Imagem Salva).`);
-    
+
     // Auto-limpeza da memória após 30s para garantir que o front pegue a atualização
     setTimeout(() => {
         if (activeJobs.has(promptId)) {
@@ -107,10 +110,10 @@ function finalizeJob(promptId, filename, job) {
 function connectToComfyWS() {
     // Se já existir conexão anterior, fecha
     if (wsConnection) {
-        try { 
-            wsConnection.terminate(); 
+        try {
+            wsConnection.terminate();
             console.log('[Servidor] Reiniciando conexão WS...');
-        } catch(e){}
+        } catch (e) { }
     }
 
     const clientId = "server_node_manager";
@@ -124,23 +127,23 @@ function connectToComfyWS() {
     }
 
     console.log(`[Servidor] Tentando conectar WebSocket em: ${COMFY_WS_URL}`);
-    
+
     try {
         const ws = new WebSocket(wsUrl, wsOptions);
         wsConnection = ws;
 
         ws.on('open', () => {
             console.log('[Servidor] Conectado ao ComfyUI');
-            isComfyUIConnected = true; 
+            isComfyUIConnected = true;
         });
-        
+
         ws.on('message', async (data, isBinary) => {
             // --- 1. TRATAMENTO DE IMAGEM BINÁRIA (SaveImageWebsocket) ---
             if (isBinary) {
                 // Lógica de Matching Melhorada
                 // Tenta encontrar o job correto para esta imagem
                 let targetPromptId = currentRunningPromptId;
-                
+
                 if (!targetPromptId) {
                     // Fallback 1: Procura o job mais recente em processamento
                     // Iteramos de trás para frente (mais recente primeiro se Map mantiver ordem de inserção) ou checamos startTime
@@ -171,23 +174,38 @@ function connectToComfyWS() {
                 if (targetPromptId && activeJobs.has(targetPromptId)) {
                     try {
                         // Ignora os primeiros 8 bytes (cabeçalho do protocolo ComfyUI: type(4) + format(4))
-                        const imageBuffer = data.subarray(8); 
-                        
+                        const imageBuffer = data.subarray(8);
+
                         const baseName = `img_${Date.now()}_${targetPromptId}`;
-                        const finalFilename = `${baseName}.png`;
+                        const finalFilename = `${baseName}.webp`;
                         const savePath = path.join(GALLERY_DIR, finalFilename);
 
-                        fs.writeFileSync(savePath, imageBuffer);
+                        try {
+                            await sharp(imageBuffer)
+                                .webp({ quality: 85 })
+                                .toFile(savePath);
 
-                        const job = activeJobs.get(targetPromptId);
-                        finalizeJob(targetPromptId, finalFilename, job);
-                        
-                        // Limpa o ID atual se coincidir
-                        if (currentRunningPromptId === targetPromptId) {
-                            currentRunningPromptId = null;
+                            const job = activeJobs.get(targetPromptId);
+                            finalizeJob(targetPromptId, finalFilename, job);
+
+                            // Limpa o ID atual se coincidir
+                            if (currentRunningPromptId === targetPromptId) {
+                                currentRunningPromptId = null;
+                            }
+                        } catch (err) {
+                            console.error("[Servidor] Erro ao converter imagem para WebP:", err);
+                            // Fallback para PNG
+                            const fallbackFilename = `${baseName}.png`;
+                            fs.writeFileSync(path.join(GALLERY_DIR, fallbackFilename), imageBuffer);
+                            const job = activeJobs.get(targetPromptId);
+                            finalizeJob(targetPromptId, fallbackFilename, job);
+
+                            if (currentRunningPromptId === targetPromptId) {
+                                currentRunningPromptId = null;
+                            }
                         }
                     } catch (err) {
-                        console.error("[Servidor] Erro ao salvar imagem via WebSocket:", err);
+                        console.error("[Servidor] Erro ao processar mensagem binária do WebSocket:", err);
                     }
                 } else {
                     console.warn("[Servidor] Imagem binária recebida e descartada. Nenhum Job correspondente encontrado.");
@@ -198,12 +216,12 @@ function connectToComfyWS() {
             // --- 2. TRATAMENTO DE MENSAGENS JSON ---
             try {
                 const msg = JSON.parse(data.toString());
-                
+
                 if (msg.type === 'execution_start') {
                     const promptId = msg.data.prompt_id;
                     currentRunningPromptId = promptId;
                     console.log(`[Servidor] Execução iniciada: ${promptId}`);
-                    
+
                     if (activeJobs.has(promptId)) {
                         const job = activeJobs.get(promptId);
                         job.status = 'processing';
@@ -219,19 +237,19 @@ function connectToComfyWS() {
                     // Se node for null, terminou a execução, execution_success cuidará disso
                     if (node && activeJobs.has(prompt_id)) {
                         const job = activeJobs.get(prompt_id);
-                        
+
                         // Tenta descobrir o nome amigável do nó baseada no JSON do prompt salvo
                         if (job.promptData && job.promptData[node]) {
                             const rawType = job.promptData[node].class_type;
                             const friendlyName = NODE_TRANSLATIONS[rawType] || rawType; // Usa tradução ou o nome técnico
-                            
+
                             job.currentStep = friendlyName;
                             activeJobs.set(prompt_id, job);
                             console.log(`[Servidor] Job ${prompt_id} passo: ${friendlyName}`);
                         }
                     }
                 }
-                
+
                 if (msg.type === 'progress') {
                     const { value, max } = msg.data;
                     // Atualiza o progresso do job atual
@@ -248,27 +266,27 @@ function connectToComfyWS() {
 
                     // NÃO finaliza imediatamente se estivermos esperando uma imagem via websocket.
                     // AUMENTADO O TIMEOUT DE 3s PARA 15s para suportar conexões lentas ou imagens pesadas
-                    
+
                     setTimeout(() => {
                         if (activeJobs.has(promptId)) {
                             const job = activeJobs.get(promptId);
-                            
+
                             // Se após o timeout o status ainda não for completed com URL, 
                             // significa que a imagem não chegou ou falhou.
                             if (job.status !== 'completed' || !job.outputUrl) {
                                 console.log(`[Servidor] Aviso: Job ${promptId} finalizou sucesso, mas imagem não chegou no tempo limite (15s). Forçando conclusão.`);
-                                
-                                job.status = 'completed'; 
+
+                                job.status = 'completed';
                                 job.progress = 100;
                                 job.currentStep = 'Concluído (Sem Imagem)';
                                 job.forcedCompletionTime = Date.now(); // Marca para permitir resgate tardio se a imagem chegar logo depois
                                 activeJobs.set(promptId, job);
-                                
+
                                 // Dá mais 20 segundos de chance antes de apagar da memória
                                 setTimeout(() => activeJobs.delete(promptId), 20000);
                             }
                         }
-                        
+
                         // Limpa o ponteiro global APENAS se ainda for este job
                         if (currentRunningPromptId === promptId) {
                             currentRunningPromptId = null;
@@ -286,7 +304,7 @@ function connectToComfyWS() {
             wsConnection = null;
             setTimeout(connectToComfyWS, 5000);
         });
-        
+
         ws.on('error', (err) => {
             console.error('[Servidor] Erro no WebSocket:', err.message);
             isComfyUIConnected = false;
@@ -314,7 +332,7 @@ app.post('/api/config', (req, res) => {
 
     // Atualiza variaveis globais
     COMFY_API_URL = url.replace(/\/$/, ""); // Remove barra final se houver
-    
+
     // Deriva WS URL (http -> ws, https -> wss)
     if (COMFY_API_URL.startsWith("https")) {
         COMFY_WS_URL = COMFY_API_URL.replace("https://", "wss://") + "/ws";
@@ -347,7 +365,7 @@ app.get('/api/loras', (req, res) => {
 app.post('/api/loras', (req, res) => {
     const { name } = req.body;
     if (!name || typeof name !== 'string') return res.status(400).json({ error: "Nome inválido" });
-    
+
     try {
         let loras = JSON.parse(fs.readFileSync(LORAS_FILE, 'utf-8'));
         if (!loras.includes(name.trim())) {
@@ -377,7 +395,7 @@ app.delete('/api/loras/:name', (req, res) => {
 app.post('/api/generate', async (req, res) => {
     try {
         const { prompt, metadata } = req.body;
-        
+
         console.log('[API] Solicitando geração...');
         const response = await axios.post(`${COMFY_API_URL}/prompt`, {
             client_id: "server_node_manager",
@@ -386,15 +404,15 @@ app.post('/api/generate', async (req, res) => {
 
         const promptId = response.data.prompt_id;
         console.log(`[API] Geração iniciada com ID: ${promptId}`);
-        
-        activeJobs.set(promptId, { 
-            id: promptId, 
-            status: 'pending', 
+
+        activeJobs.set(promptId, {
+            id: promptId,
+            status: 'pending',
             progress: 0,
             startTime: Date.now(),
             promptData: prompt, // Salva o fluxo completo para consultar os nomes dos nós depois
             currentStep: 'Aguardando...',
-            metadata: metadata || {} 
+            metadata: metadata || {}
         });
 
         res.json({ success: true, prompt_id: promptId });
@@ -407,9 +425,9 @@ app.post('/api/generate', async (req, res) => {
 // Cancelar Job
 app.post('/api/cancel', async (req, res) => {
     const { promptId } = req.body;
-    
+
     console.log(`[API] Solicitando cancelamento do job: ${promptId}`);
-    
+
     const job = activeJobs.get(promptId);
     if (!job) {
         // Se não está na memória, pode já ter acabado ou não existe.
@@ -420,20 +438,20 @@ app.post('/api/cancel', async (req, res) => {
         if (job.status === 'processing') {
             // Se está processando, usamos /interrupt
             console.log(`[API] Interrompendo execução (Job em andamento: ${promptId})`);
-            await axios.post(`${COMFY_API_URL}/interrupt`, {}, { 
-                headers: {'skip_zrok_interstitial': '1'} 
+            await axios.post(`${COMFY_API_URL}/interrupt`, {}, {
+                headers: { 'skip_zrok_interstitial': '1' }
             });
         } else {
             // Se está pendente, usamos /queue com delete
             console.log(`[API] Removendo da fila de espera: ${promptId}`);
-            await axios.post(`${COMFY_API_URL}/queue`, { delete: [promptId] }, { 
-                headers: {'skip_zrok_interstitial': '1'} 
+            await axios.post(`${COMFY_API_URL}/queue`, { delete: [promptId] }, {
+                headers: { 'skip_zrok_interstitial': '1' }
             });
         }
 
         // Removemos da memória local imediatamente para refletir na UI
         activeJobs.delete(promptId);
-        
+
         // Se era o job atual, limpamos a referência
         if (currentRunningPromptId === promptId) {
             currentRunningPromptId = null;
@@ -457,35 +475,35 @@ app.get('/api/queue', (req, res) => {
 app.get('/api/gallery', (req, res) => {
     fs.readdir(GALLERY_DIR, (err, files) => {
         if (err) return res.json([]);
-        
+
         const images = files
-            .filter(f => f.toLowerCase().endsWith('.png'))
+            .filter(f => f.toLowerCase().endsWith('.png') || f.toLowerCase().endsWith('.webp'))
             .map(f => {
                 const filePath = path.join(GALLERY_DIR, f);
                 let meta = {};
                 try {
-                    const jsonPath = path.join(GALLERY_DIR, f.replace('.png', '.json'));
+                    const jsonPath = path.join(GALLERY_DIR, f.replace(/\.(png|webp)$/i, '.json'));
                     if (fs.existsSync(jsonPath)) {
                         const rawData = fs.readFileSync(jsonPath, 'utf-8');
                         meta = JSON.parse(rawData);
                     }
-                } catch (e) {}
+                } catch (e) { }
 
                 let fileStats;
                 try {
                     fileStats = fs.statSync(filePath);
-                } catch(e) { return null; }
+                } catch (e) { return null; }
 
                 return {
                     filename: f,
                     url: `/gallery/${f}`,
                     time: fileStats.mtime.getTime(),
-                    ...meta 
+                    ...meta
                 };
             })
             .filter(item => item !== null) // Remove nulos caso erro no stat
             .sort((a, b) => b.time - a.time);
-            
+
         res.json(images);
     });
 });
@@ -494,10 +512,10 @@ app.get('/api/gallery', (req, res) => {
 app.delete('/api/image/:filename', (req, res) => {
     const filename = req.params.filename;
     // Validação básica de segurança de path traversal
-    if (filename.includes('..') || filename.includes('/')) return res.status(400).json({error: 'Invalid filename'});
+    if (filename.includes('..') || filename.includes('/')) return res.status(400).json({ error: 'Invalid filename' });
 
     const pngPath = path.join(GALLERY_DIR, filename);
-    const jsonPath = path.join(GALLERY_DIR, filename.replace('.png', '.json'));
+    const jsonPath = path.join(GALLERY_DIR, filename.replace(/\.(png|webp)$/i, '.json'));
 
     try {
         if (fs.existsSync(pngPath)) fs.unlinkSync(pngPath);
@@ -514,13 +532,13 @@ app.post('/api/image/batch-delete', (req, res) => {
     if (!Array.isArray(filenames)) return res.status(400).json({ error: "Lista inválida" });
 
     let deletedCount = 0;
-    
+
     filenames.forEach(filename => {
         if (filename.includes('..') || filename.includes('/')) return; // Segurança
 
         const pngPath = path.join(GALLERY_DIR, filename);
-        const jsonPath = path.join(GALLERY_DIR, filename.replace('.png', '.json'));
-        
+        const jsonPath = path.join(GALLERY_DIR, filename.replace(/\.(png|webp)$/i, '.json'));
+
         try {
             if (fs.existsSync(pngPath)) {
                 fs.unlinkSync(pngPath);
