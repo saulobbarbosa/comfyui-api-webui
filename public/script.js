@@ -596,6 +596,7 @@ function renderQueue(queueData) {
     if (queueData.length === 0) {
         els.queueList.innerHTML = '<div style="color:var(--text-muted); padding:10px; text-align:center; font-size:0.8rem;">Fila vazia</div>';
         els.progressOverlay.classList.add('hidden');
+        document.title = 'ComfyUI Node Station';
         return;
     }
 
@@ -684,6 +685,7 @@ function renderQueue(queueData) {
             els.progressOverlay.classList.remove('hidden');
             els.progressBar.style.width = `${job.progress}%`;
             els.progressText.innerText = `${job.progress}%`;
+            document.title = `(${job.progress}%) ComfyUI Node Station`;
         }
 
         els.queueList.appendChild(item);
@@ -691,6 +693,7 @@ function renderQueue(queueData) {
 
     if (!somethingProcessing) {
         els.progressOverlay.classList.add('hidden');
+        document.title = 'ComfyUI Node Station';
     }
 }
 
